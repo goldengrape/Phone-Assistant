@@ -1,0 +1,26 @@
+{
+    "name": "phone-link-cli",
+    "version": "1.0.0",
+    "description": "Phone Link AI Assistant CLI - handles phone calls via VB-Audio Virtual Cable",
+    "main": "dist/cli.js",
+    "bin": {
+        "phone-link": "./dist/cli.js"
+    },
+    "scripts": {
+        "build": "tsc",
+        "start": "tsx src/cli.ts",
+        "list-devices": "tsx src/list-devices.ts",
+        "test-audio": "tsx src/test-audio.ts",
+        "test-gemini": "tsx src/test-gemini.ts"
+    },
+    "dependencies": {
+        "@google/genai": "^1.40.0",
+        "dotenv": "^16.4.5",
+        "naudiodon": "^2.3.6"
+    },
+    "devDependencies": {
+        "@types/node": "^22.14.0",
+        "tsx": "^4.19.0",
+        "typescript": "~5.8.2"
+    }
+}
