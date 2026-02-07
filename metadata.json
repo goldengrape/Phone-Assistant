@@ -1,0 +1,7 @@
+{
+  "name": "Gemini Phone Assistant",
+  "description": "Real-time voice conversation where AI acts as a proxy for the user, guided by text instructions and uploaded documents.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
