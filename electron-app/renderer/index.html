@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
+  <title>Phone Link Assistant</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </svg>
+        </div>
+        <h1>Phone Link Assistant</h1>
+      </div>
+      <div class="status-badge" id="status-badge">
+        <span class="status-dot"></span>
+        <span class="status-text">Checking...</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Status Panel -->
+      <section class="status-panel" id="status-panel">
+        <h2>System Status</h2>
+        <div class="status-items">
+          <div class="status-item" id="api-status">
+            <span class="label">API Key</span>
+            <span class="value">Checking...</span>
+          </div>
+          <div class="status-item" id="vbcable-status">
+            <span class="label">VB-Cable</span>
+            <span class="value">Checking...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Call Control -->
+      <section class="call-control">
+        <div class="call-visualizer" id="call-visualizer">
+          <div class="visualizer-content">
+            <div class="ai-avatar" id="ai-avatar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                <line x1="9" y1="9" x2="9.01" y2="9"/>
+                <line x1="15" y1="9" x2="15.01" y2="9"/>
+              </svg>
+            </div>
+            <p class="visualizer-text" id="visualizer-text">Ready to connect</p>
+          </div>
+        </div>
+
+        <div class="call-buttons">
+          <button class="btn btn-start" id="btn-start">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Start AI Agent
+          </button>
+          <button class="btn btn-stop hidden" id="btn-stop">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="6" y="6" width="12" height="12" rx="2"/>
+            </svg>
+            End Call
+          </button>
+        </div>
+      </section>
+
+      <!-- Command Input -->
+      <section class="command-section">
+        <div class="command-input-wrapper">
+          <input 
+            type="text" 
+            id="command-input" 
+            placeholder="Type a command for the AI (e.g., 'Wrap up the call')..."
+            disabled
+          />
+          <button class="btn btn-send" id="btn-send" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+        <p class="command-hint">
+          💡 Commands are sent silently to the AI to guide the conversation
+        </p>
+      </section>
+    </main>
+
+    <!-- Error Toast -->
+    <div class="toast hidden" id="error-toast">
+      <span class="toast-message"></span>
+      <button class="toast-close">&times;</button>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

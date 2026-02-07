@@ -1,0 +1,24 @@
+{
+    "name": "phone-link-assistant",
+    "version": "1.0.0",
+    "description": "AI Phone Assistant with Windows Phone Link integration",
+    "main": "dist/main.js",
+    "scripts": {
+        "dev": "tsx watch src/main.ts",
+        "build": "tsc",
+        "start": "electron .",
+        "list-devices": "tsx src/list-devices.ts"
+    },
+    "dependencies": {
+        "@anthropic-ai/sdk": "^0.39.0",
+        "@google/genai": "^1.40.0",
+        "dotenv": "^16.4.5",
+        "naudiodon": "^2.3.6"
+    },
+    "devDependencies": {
+        "@types/node": "^22.14.0",
+        "electron": "^28.3.3",
+        "tsx": "^4.19.0",
+        "typescript": "~5.8.2"
+    }
+}
