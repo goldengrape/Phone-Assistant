@@ -1,71 +1,49 @@
-# Algorithm & Implementation Description
+# Algorithm & Implementation Description - CLI Bridge
 
 ## 1. System Architecture
-The application is a client-side React SPA (Single Page Application) that connects directly to the Google Gemini Live API via WebSockets. No intermediate backend server handles the media stream.
+The application is a Node.js CLI process that acts as a real-time bridge between **Windows Phone Link** (via VB-Audio Virtual Cable) and the **Google Gemini Live API**.
 
 **Data Flow**:
-`Microphone` -> `AudioContext` -> `Gemini SDK (WebSocket)` -> `AudioContext` -> `Speakers`
+`Phone Call (In)` -> `CABLE Output (VB-Cable)` -> `Node.js (naudiodon)` -> `Gemini Live API` -> `Node.js (naudiodon)` -> `CABLE Input (VB-Cable)` -> `Phone Call (Out)`
 
 ## 2. Audio Processing Pipeline
 
-### 2.1 Input (Microphone to API)
-- **Capture**: Uses `navigator.mediaDevices.getUserMedia({ audio: true })`.
-- **Sampling**: Audio is captured at the hardware sample rate but downsampled/processed contextually. The `ScriptProcessorNode` (buffer size 4096) intercepts raw PCM data.
-- **Format Conversion**: 
-  - Raw `Float32Array` data from the Web Audio API is converted to a 16-bit PCM format (Little Endian).
-  - Values are clamped between -1.0 and 1.0, then scaled to Int16 range (-32768 to 32767).
+### 2.1 Virtual Audio Routing (naudiodon)
+- **Library**: Uses `naudiodon` (PortAudio bindings) for low-latency native audio I/O.
+- **Input (Capture)**: 
+  - Captures from the VB-Cable device marked "CABLE Output". 
+  - Format: 16-bit PCM, Mono, 16000Hz (Native Gemini input requirement).
+- **Output (Playback)**: 
+  - Writes to the VB-Cable device marked "CABLE Input".
+  - Format: 16-bit PCM, Mono, 24000Hz (Native Gemini output response).
+
+### 2.2 Input Pipeline (Bridge to API)
+- **Buffering**: Raw PCM chunks are emitted by `naudiodon` as Node.js `Buffer` objects.
 - **Transmission**: 
-  - The PCM data is base64 encoded.
-  - Sent via `session.sendRealtimeInput` as a chunk with mimeType `audio/pcm;rate=16000`.
+  - Buffers are base64 encoded.
+  - Sent via the WebSocket session using `session.sendRealtimeInput`.
+  - MIME type: `audio/pcm;rate=16000`.
 
-### 2.2 Output (API to Speakers)
-- **Reception**: The `onmessage` callback receives `LiveServerMessage` objects.
-- **Buffering Strategy (Gapless Playback)**:
-  - The system maintains a `nextStartTimeRef` pointer.
-  - When a new audio chunk arrives, it is decoded into an `AudioBuffer` using `decodeAudioData`.
-  - The playback start time is calculated as `Math.max(audioContext.currentTime, nextStartTimeRef.current)`.
-  - `nextStartTimeRef` is incremented by the duration of the chunk.
-  - This ensures that if chunks arrive faster than playback, they are queued sequentially. If they arrive slower, playback resumes immediately upon arrival.
-- **Interruption**: If `message.serverContent.interrupted` is true, all currently scheduled `AudioBufferSourceNode`s are stopped immediately, and the `nextStartTimeRef` is reset.
+### 2.3 Output Pipeline (API to Phone)
+- **Reception**: The bridge receives binary PCM chunks from the Gemini API.
+- **Direct Pipelining**: Unlike a browser-based implementation, the Node.js bridge pipes the PCM stream directly to the `naudiodon` output stream for minimal latency.
+- **Interruption Logic**: When Gemini emits an `interrupted` event, the output buffer is flushed to immediately stop AI speech.
 
-## 3. Multimodal Interaction Logic
+## 3. Multimodal Control Logic
 
-### 3.1 The "Proxy" Pattern (System Prompt)
-To achieve the requirement where the AI talks to the Caller but obeys the Supervisor, we employ a specific Prompt Engineering strategy in `getDefaultInstruction`:
+### 3.1 Supervisor Instructions
+- **Modality Segregation**: 
+  - Audio modality is treated as the conversation with the **Caller**.
+  - Text modality is treated as **System Commands** from the **Supervisor**.
+- **Implementation**: Text commands are wrapped in a `[SYSTEM_COMMAND]` prefix and sent as `text/plain` media chunks via the Live API session. This enables real-time behavior adjustment without interrupting the audio stream context.
 
-1.  **Role Definition**: "You are an AI Phone Assistant acting as a proxy."
-2.  **Input Segregation**:
-    - **Audio Modality**: Explicitly defined as "The Caller". The AI must respond to this naturally.
-    - **Text Modality**: Explicitly defined as "System Commands". The AI is instructed **never** to read this text aloud, but to treat it as a meta-instruction to modify its next audio response.
+## 4. Hardware Configuration Requirement
 
-### 3.2 Text Injection
-Unlike standard chat apps where text is part of the conversation history, here text is a control signal.
-- **Method**: We use `session.sendRealtimeInput`.
-- **Payload**:
-  ```javascript
-  {
-    media: {
-      mimeType: "text/plain",
-      data: btoa("[SYSTEM_COMMAND]: " + userText)
-    }
-  }
-  ```
-- **Why**: Sending it as a media chunk allows it to be injected into the live session context immediately without disrupting the audio input stream logic.
+For the bridge to work, Windows must be configured to isolate application audio:
+1. **Phone Link** must output to `CABLE Input`.
+2. **Phone Link** must input (mic) from `CABLE Output`.
+3. The Node.js bridge performs the "Inverse" operation: reading from `Output` and writing to `Input`.
 
-## 4. Document Parsing Algorithm
-
-File content is extracted client-side to ensure privacy and speed.
-
-- **Strategy**: 
-  - Files are parsed into raw text strings.
-  - These strings are appended to the `systemInstruction` configuration **before** the connection is established.
-  - **Limitation**: Context cannot be updated mid-call; a disconnect/reconnect is required to change documents.
-
-### 4.1 Parsers
-- **PDF**: Uses `pdf.js` to iterate through pages and extract text items from the rendering layer.
-- **EPUB**: Uses `jszip` to unzip the container, finds `.html/.xhtml` files, and strips HTML tags using `DOMParser`.
-- **Text/MD**: Reads directly via `FileReader`.
-
-## 5. State Management
-- **ConnectionStatus**: Tracks the WebSocket state (`disconnected` -> `connecting` -> `connected`).
-- **Refs**: heavily used for AudioContexts and WebSocket sessions to avoid React closure staleness during high-frequency audio processing callbacks (`onaudioprocess`).
+## 5. Security & Stability
+- **Environment Variables**: API keys are isolated in a `.env` file within the `cli/` directory.
+- **Lazy Loading**: Native modules like `naudiodon` are lazy-loaded to ensure fast startup and easier debugging of environment-related load errors.
