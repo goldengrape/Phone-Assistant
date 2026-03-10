@@ -1,43 +1,39 @@
-# User Requirements Document (URD) - Phone Link Edition
+# 用户需求文档 (User Requirements Document - URD) - Mac+iPhone Kivy版 (V2)
 
-## 1. Introduction
-The **Gemini Phone Assistant** is a solution for delegating phone call interactions to an AI while maintaining supervisor control. It uses virtual audio routing to bridge **Windows Phone Link** with the **Google Gemini Live API**.
+## 1. 简介
+**Gemini Phone Assistant** (Mac + iPhone 版) 是一款结合 Mac 连续互通接听电话功能与 Google Gemini Multimodal Live API 的智能语音助手。
+本项目旨在通过图形化界面(GUI)帮助用户(监督者)直观管理 AI 代理与来电者的通话。采用 `uv` 作为包管理器，并贯彻公理设计、契约式编程(DbC)、函数式编程(FP)、测试驱动开发(TDD)及奥卡姆剃刀等多项现代软件工程原则。
 
-## 2. User Roles
+## 2. 用户角色
 
-### 2.1 The Supervisor (User)
-- **Goal**: Direct the AI's conversation with the Caller.
-- **Capabilities**: Configures audio routing, issues text commands via CLI, monitors call status.
+### 2.1 监督者 / 用户 (The Supervisor)
+- **目标**: 通过可视化 GUI 控制音频路由及 AI 会话，并提供文字指令干预与高级全局设定。
+- **能力**: 
+  - 接通前设定【本次通话主旨】与【强制AI回复语言】。
+  - 点击启动/停止通话。
+  - 在输入框键入 `Whisper`(干预文本)，即时改变 AI 对答方向，且指令过程静默。
+  - 查看双向实时通话日志 (Transcript)，并在挂断后一键导出历史记录为文本文件。
 
-### 2.2 The Agent (AI)
-- **Goal**: Handle vocal interactions with the Phone Caller based on the Supervisor's instructions.
-- **Capabilities**: Low-latency voice interaction, real-time command processing.
+### 2.2 AI 代理 (The Agent)
+- **目标**: 通过原生流式收音和语音合成与电话另一端自然对话，具备低延迟响应的特性。
+- **能力**: 承担音频输入的多模态理解和语音直接输出任务，处理监督者的后台指令流而不向外播报。
 
-### 2.3 The Caller
-- The person on the other end of the phone call, connected via Windows Phone Link.
+### 2.3 来电者 (The Caller)
+- **描述**: 在电话另一端的发声者，与 AI 直接进行语音交流。
 
-## 3. Functional Requirements
+## 3. 功能需求 (Functional Requirements)
 
-### 3.1 Audio Routing & Bridging
-- **FR-01**: The system MUST detect and utilize **VB-Audio Virtual Cable** devices.
-- **FR-02**: The system MUST capture audio from `CABLE Output` (the Caller's voice) and stream it to Gemini.
-- **FR-03**: The system MUST route AI-generated audio to `CABLE Input` (the Agent's voice to be heard by the Caller).
-- **FR-04**: The system MUST support an optional "Monitor" output to local speakers so the Supervisor can hear the conversation.
+- **FR-01 (多功能 GUI 交互)**: 系统必须提供基于 Kivy 的图形用户界面，包含连接状态、干预输入框、事件/转录文字聚合日志库、高级对话参数配置中心。底层实现对 macOS 提供原生的苹方中文字体支持，消灭乱码。
+- **FR-02 (轻量稳定的原生硬件路由)**: 系统使用计算机原生系统默认麦克风（听取免提通话音）和扬声器发出响应流，完全去除易引发冲突的第三方虚拟声卡 (BlackHole) 依赖；并将音频队列容积缩减（maxsize=10），实现了极低延迟对话打断。
+- **FR-03 (实时文字命令系统)**: 界面允许监督者通过异步管道发送打断参数。通过组合构建强力的 `system_instruction`，模型需明确其【接线员/被干预体】的双重人格认知。
+- **FR-04 (包与环境管理)**: 必须使用 `uv` 统一配置和管理项目环境与依赖。
+- **FR-05 (最新版 SDK 连接层)**: 必须采取 `google-genai` 官方 SDK 对接 Gemini 2.5 Flash Native Audio Preview 模型（需设置系统全局采样率为其强制支持的 24000Hz 频率标准）。
 
-### 3.2 Session Management (CLI)
-- **FR-05**: The system MUST provide an interactive CLI to start/stop call handling.
-- **FR-06**: The system MUST validate API credentials and audio device availability on startup.
-- **FR-07**: The system MUST reconnect to the Live API automatically or allow manual restart upon failure.
+## 4. 架构与工程原则 (Engineering Principles)
 
-### 3.3 Live Direction (The "Whisper" Feature)
-- **FR-08**: The Supervisor MUST be able to send text commands during an active call.
-- **FR-09**: The AI MUST interpret these commands as behavioral changes without reading the command text aloud.
-
-### 3.4 persona & Configuration
-- **FR-10**: The system MUST support customization of the AI's voice (e.g., Zephyr, Puck).
-- **FR-11**: The system MUST support custom system instructions (prompts) to define the Agent's role.
-
-## 4. Non-Functional Requirements
-- **NFR-01 Latency**: Minimizing round-trip latency to maintain human-like conversation Flow.
-- **NFR-02 Precision**: 16-bit 16kHz PCM audio handling for optimal Gemini performance.
-- **NFR-03 Stability**: The bridge process must handle long-duration calls without audio buffer overflow.
+为保证项目质量，项目强制实施以下理论基石：
+- **奥卡姆剃刀 (Occam's Razor)**: "如无必要，勿增实体"。摒弃多设备虚拟化路由分流设计，转为利用物理听声传声。
+- **公理设计 (Axiomatic Design)**: 独立性公理（解耦功能与实现细节）以及信息公理（最简单的解即最优解）。
+- **函数式编程 (Functional Programming - FP)**: 核心数据变换（如音频编码、Prompt合并）必须为无副作用的纯函数（Pure Functions）。I/O 操作隔离于极细边缘层。
+- **契约式编程 (Design by Contract - DbC)**: 输入与输出必须通过断言(Assertions)或类型验证前置条件(Pre-conditions)和后置条件(Post-conditions)。
+- **测试驱动开发 (TDD)**: 在编写具体实现前，必须先利用 `pytest` 编写函数和模块的测试用例。
