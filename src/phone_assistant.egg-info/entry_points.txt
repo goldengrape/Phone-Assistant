@@ -1,2 +1,0 @@
-[console_scripts]
-phone-assistant = phone_assistant.main:entry_point
