@@ -4,6 +4,7 @@ export interface AIClientOptions {
   onStateChange: (state: 'disconnected' | 'connecting' | 'connected' | 'error') => void;
   callPurpose?: string;
   targetLanguage?: string;
+  apiKey?: string;
 }
 
 export abstract class AIClient {

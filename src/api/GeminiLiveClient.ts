@@ -2,14 +2,16 @@ import { AIClient, AIClientOptions } from './AIClient';
 import { int16ToBase64, base64ToInt16 } from './utils';
 
 export class GeminiLiveClient extends AIClient {
-  private model = "gemini-2.5-flash-native-audio-preview-12-2025";
-  private apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-  private url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+  private model = "gemini-2.0-flash-exp";
+  private apiKey = "";
+  private url = "";
 
   constructor(options: AIClientOptions) {
     super(options);
+    this.apiKey = options.apiKey || import.meta.env.VITE_GEMINI_API_KEY || "";
+    this.url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
     if (!this.apiKey) {
-      console.warn("VITE_GEMINI_API_KEY is not set.");
+      console.warn("Gemini API Key is not set.");
     }
   }
 
@@ -31,8 +33,14 @@ export class GeminiLiveClient extends AIClient {
       this.options.onStateChange('error');
     };
 
-    this.ws.onclose = () => {
-      this.options.onStateChange('disconnected');
+    this.ws.onclose = (event) => {
+      console.log("Gemini WS Closed:", event.code, event.reason);
+      // 1000 is normal closure
+      if (event.code !== 1000 && event.code !== 1005) {
+        this.options.onStateChange('error');
+      } else {
+        this.options.onStateChange('disconnected');
+      }
     };
   }
 
