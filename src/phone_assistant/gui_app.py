@@ -25,10 +25,17 @@ class PhoneAssistantGUI(BoxLayout):
         )
         config_layout.add_widget(self.context_input)
         
+        self.model_spinner = Spinner(
+            text='Gemini',
+            values=('Gemini', 'Qwen'),
+            size_hint_x=0.2
+        )
+        config_layout.add_widget(self.model_spinner)
+
         self.lang_spinner = Spinner(
             text='Auto',
             values=('Auto', 'English', 'Chinese', 'Japanese'),
-            size_hint_x=0.3
+            size_hint_x=0.2
         )
         config_layout.add_widget(self.lang_spinner)
         self.add_widget(config_layout)
@@ -77,6 +84,7 @@ class PhoneAssistantGUI(BoxLayout):
             
             # Lock configs
             self.context_input.disabled = True
+            self.model_spinner.disabled = True
             self.lang_spinner.disabled = True
             self.export_btn.disabled = True
             self.transcript_view.text = "--- Call Started ---\n"
@@ -84,7 +92,8 @@ class PhoneAssistantGUI(BoxLayout):
             # Fire an async task to the loop with config parameters
             context_val = self.context_input.text.strip()
             lang_val = self.lang_spinner.text
-            asyncio.create_task(self.start_callback(self, context_val, lang_val))
+            model_val = self.model_spinner.text
+            asyncio.create_task(self.start_callback(self, context_val, lang_val, model_val))
         else:
             self.status_label.text = "Status: Disconnecting..."
             self.connect_btn.text = "Connect"
@@ -92,6 +101,7 @@ class PhoneAssistantGUI(BoxLayout):
             
             # Unlock configs
             self.context_input.disabled = False
+            self.model_spinner.disabled = False
             self.lang_spinner.disabled = False
             self.export_btn.disabled = False
             
