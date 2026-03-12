@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-  Play, Square, Download, Send, Mic, MessageSquare,
-  Settings, ChevronDown, ChevronUp, CheckCircle2, XCircle, Loader2
+import { 
+  Play, Square, Download, Send, Mic, MessageSquare, 
+  Settings, ChevronDown, ChevronUp, CheckCircle2, XCircle, Loader2 
 } from 'lucide-react';
 import { useAppStore } from './store/useAppStore';
 import { AudioCapture } from './audio/AudioCapture';
@@ -145,12 +145,12 @@ export default function App() {
         apiKey: apiKey
       };
 
-      const testClient = model === 'Gemini'
-        ? new GeminiLiveClient(options)
+      const testClient = model === 'Gemini' 
+        ? new GeminiLiveClient(options) 
         : new QwenLiveClient(options);
-
+      
       await testClient.connect();
-
+      
       // Auto-timeout if it takes too long
       setTimeout(() => {
         setTestingKey(false);
@@ -224,7 +224,7 @@ export default function App() {
               <option value="Qwen">Qwen Omni</option>
             </select>
 
-            <button
+            <button 
               onClick={() => setShowSettings(!showSettings)}
               className={cn(
                 "p-2 rounded-lg transition-colors",
@@ -275,7 +275,7 @@ export default function App() {
                     <div className="absolute right-1 top-1 flex items-center gap-1">
                       {testResult === 'success' && <CheckCircle2 size={16} className="text-green-500 mr-1" />}
                       {testResult === 'error' && <XCircle size={16} className="text-red-500 mr-1" />}
-                      <button
+                      <button 
                         onClick={testApiKey}
                         disabled={testingKey || !(model === 'Gemini' ? geminiApiKey : qwenApiKey)}
                         className="bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white text-[10px] font-bold px-3 py-1.5 rounded transition-colors flex items-center gap-1"
@@ -294,10 +294,10 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 overflow-hidden flex flex-col max-w-6xl w-full mx-auto p-4 gap-4">
-
+        
         {/* System Prompt (Call Purpose) Section - AI Studio Style */}
         <section className="bg-neutral-950 border border-neutral-800 rounded-xl overflow-hidden shadow-lg transition-all duration-300">
-          <button
+          <button 
             onClick={() => setShowPrompt(!showPrompt)}
             className="w-full flex items-center justify-between p-4 bg-neutral-900/50 hover:bg-neutral-900 transition-colors"
           >
@@ -307,7 +307,7 @@ export default function App() {
             </div>
             {showPrompt ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
-
+          
           {showPrompt && (
             <div className="p-4 border-t border-neutral-800 animate-in fade-in slide-in-from-top-1 duration-200">
               <textarea
