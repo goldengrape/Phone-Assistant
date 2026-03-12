@@ -33,8 +33,14 @@ export class GeminiLiveClient extends AIClient {
       this.options.onStateChange('error');
     };
 
-    this.ws.onclose = () => {
-      this.options.onStateChange('disconnected');
+    this.ws.onclose = (event) => {
+      console.log("Gemini WS Closed:", event.code, event.reason);
+      // 1000 is normal closure
+      if (event.code !== 1000 && event.code !== 1005) {
+        this.options.onStateChange('error');
+      } else {
+        this.options.onStateChange('disconnected');
+      }
     };
   }
 

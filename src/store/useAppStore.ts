@@ -46,6 +46,17 @@ export const useAppStore = create<AppState>((set) => ({
     set({ qwenApiKey: key });
   },
 
+  geminiApiKey: localStorage.getItem('gemini_api_key') || '',
+  setGeminiApiKey: (key) => {
+    localStorage.setItem('gemini_api_key', key);
+    set({ geminiApiKey: key });
+  },
+  qwenApiKey: localStorage.getItem('qwen_api_key') || '',
+  setQwenApiKey: (key) => {
+    localStorage.setItem('qwen_api_key', key);
+    set({ qwenApiKey: key });
+  },
+
   status: 'disconnected',
   setStatus: (s) => set({ status: s }),
 

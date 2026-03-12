@@ -40,8 +40,13 @@ export class QwenLiveClient extends AIClient {
       this.options.onStateChange('error');
     };
 
-    this.ws.onclose = () => {
-      this.options.onStateChange('disconnected');
+    this.ws.onclose = (event) => {
+      console.log("Qwen WS Closed:", event.code, event.reason);
+      if (event.code !== 1000 && event.code !== 1005) {
+        this.options.onStateChange('error');
+      } else {
+        this.options.onStateChange('disconnected');
+      }
     };
   }
 
