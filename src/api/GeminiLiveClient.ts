@@ -2,7 +2,7 @@ import { AIClient, AIClientOptions } from './AIClient';
 import { int16ToBase64, base64ToInt16 } from './utils';
 
 export class GeminiLiveClient extends AIClient {
-  private model = "gemini-2.0-flash-exp";
+  private model = "gemini-2.5-flash-native-audio-preview-12-2025";
   private apiKey = "";
   private url = "";
 
@@ -66,14 +66,7 @@ export class GeminiLiveClient extends AIClient {
       setup: {
         model: `models/${this.model}`,
         generationConfig: {
-          responseModalities: ["AUDIO", "TEXT"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: {
-                voiceName: "Puck"
-              }
-            }
-          }
+          responseModalities: ["AUDIO"]
         },
         systemInstruction: {
           parts: [{ text: instructions }]

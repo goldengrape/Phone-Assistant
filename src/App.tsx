@@ -199,7 +199,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Mic className="text-blue-500" size={24} />
-            <h1 className="text-xl font-bold tracking-tight hidden sm:block">AI Phone Assistant</h1>
+            <h1 className="text-xl font-bold tracking-tight hidden sm:block">AI Phone Assistant <span className="text-xs font-normal text-neutral-500 ml-1">v1.1.0</span></h1>
             <span className={cn(
               "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ml-2",
               status === 'connected' ? "bg-green-500/20 text-green-400 border border-green-500/30" :
@@ -220,7 +220,7 @@ export default function App() {
                 setTestResult(null);
               }}
             >
-              <option value="Gemini">Gemini 2.0 Flash</option>
+              <option value="Gemini">Gemini 2.5 Flash Native</option>
               <option value="Qwen">Qwen Omni</option>
             </select>
 
@@ -315,7 +315,7 @@ export default function App() {
                 value={callPurpose}
                 onChange={(e) => setCallPurpose(e.target.value)}
                 placeholder="Define the AI's role and the goal of the call..."
-                className="w-full h-32 bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-neutral-300 font-mono leading-relaxed shadow-inner placeholder:text-neutral-700"
+                className="w-full h-32 bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-neutral-300 font-mono leading-relaxed shadow-inner placeholder:text-neutral-700 focus:bg-neutral-800 transition-colors"
               />
               <div className="mt-2 flex justify-end">
                 <span className="text-[10px] text-neutral-600 uppercase tracking-tighter">Markdown supported</span>
