@@ -15,6 +15,11 @@ interface AppState {
   callPurpose: string;
   setCallPurpose: (cp: string) => void;
 
+  geminiApiKey: string;
+  setGeminiApiKey: (key: string) => void;
+  qwenApiKey: string;
+  setQwenApiKey: (key: string) => void;
+
   status: 'disconnected' | 'connecting' | 'connected' | 'error';
   setStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void;
 
@@ -28,8 +33,18 @@ export const useAppStore = create<AppState>((set) => ({
   setModel: (m) => set({ model: m }),
   language: 'Auto',
   setLanguage: (l) => set({ language: l }),
-  callPurpose: '',
-  setCallPurpose: (cp) => set({ callPurpose: cp }),
+  callPurpose: 'You are an intelligent AI Phone Assistant...',
+
+  geminiApiKey: localStorage.getItem('gemini_api_key') || '',
+  setGeminiApiKey: (key) => {
+    localStorage.setItem('gemini_api_key', key);
+    set({ geminiApiKey: key });
+  },
+  qwenApiKey: localStorage.getItem('qwen_api_key') || '',
+  setQwenApiKey: (key) => {
+    localStorage.setItem('qwen_api_key', key);
+    set({ qwenApiKey: key });
+  },
 
   status: 'disconnected',
   setStatus: (s) => set({ status: s }),

@@ -3,13 +3,14 @@ import { int16ToBase64, base64ToInt16 } from './utils';
 
 export class QwenLiveClient extends AIClient {
   private url = "wss://dashscope-intl.aliyuncs.com/api-ws/v1/realtime"; // Singapore Region
-  private apiKey = import.meta.env.VITE_DASHSCOPE_API_KEY || "";
+  private apiKey = "";
   private model = "qwen3-omni-flash-realtime";
 
   constructor(options: AIClientOptions) {
     super(options);
+    this.apiKey = options.apiKey || import.meta.env.VITE_DASHSCOPE_API_KEY || "";
     if (!this.apiKey) {
-      console.warn("VITE_DASHSCOPE_API_KEY is not set.");
+      console.warn("DashScope API Key is not set.");
     }
   }
 

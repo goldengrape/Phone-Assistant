@@ -2,14 +2,16 @@ import { AIClient, AIClientOptions } from './AIClient';
 import { int16ToBase64, base64ToInt16 } from './utils';
 
 export class GeminiLiveClient extends AIClient {
-  private model = "gemini-2.5-flash-native-audio-preview-12-2025";
-  private apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
-  private url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
+  private model = "gemini-2.0-flash-exp";
+  private apiKey = "";
+  private url = "";
 
   constructor(options: AIClientOptions) {
     super(options);
+    this.apiKey = options.apiKey || import.meta.env.VITE_GEMINI_API_KEY || "";
+    this.url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
     if (!this.apiKey) {
-      console.warn("VITE_GEMINI_API_KEY is not set.");
+      console.warn("Gemini API Key is not set.");
     }
   }
 
