@@ -1,0 +1,42 @@
+import { create } from 'zustand';
+
+interface Message {
+  id: string;
+  role: 'AI' | 'User' | 'Supervisor' | 'System';
+  text: string;
+  timestamp: Date;
+}
+
+interface AppState {
+  model: 'Gemini' | 'Qwen';
+  setModel: (m: 'Gemini' | 'Qwen') => void;
+  language: string;
+  setLanguage: (l: string) => void;
+  callPurpose: string;
+  setCallPurpose: (cp: string) => void;
+
+  status: 'disconnected' | 'connecting' | 'connected' | 'error';
+  setStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') => void;
+
+  messages: Message[];
+  addMessage: (msg: Omit<Message, 'id' | 'timestamp'>) => void;
+  clearMessages: () => void;
+}
+
+export const useAppStore = create<AppState>((set) => ({
+  model: 'Gemini',
+  setModel: (m) => set({ model: m }),
+  language: 'Auto',
+  setLanguage: (l) => set({ language: l }),
+  callPurpose: '',
+  setCallPurpose: (cp) => set({ callPurpose: cp }),
+
+  status: 'disconnected',
+  setStatus: (s) => set({ status: s }),
+
+  messages: [],
+  addMessage: (msg) => set((state) => ({
+    messages: [...state.messages, { ...msg, id: Math.random().toString(36).substring(7), timestamp: new Date() }]
+  })),
+  clearMessages: () => set({ messages: [] })
+}));
