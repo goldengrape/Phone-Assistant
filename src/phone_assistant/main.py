@@ -14,6 +14,7 @@ if os.path.exists(font_path):
 
 from phone_assistant.audio_io import AudioCaptureGenerator, AudioPlaybackConsumer
 from phone_assistant.gemini_multimodal import GeminiSession
+from phone_assistant.qwen_multimodal import QwenSession
 from phone_assistant.gui_app import PhoneAssistantGUI
 
 kivy.require('2.3.0')
@@ -21,10 +22,8 @@ kivy.require('2.3.0')
 class AppRunner:
     def __init__(self):
         load_dotenv()
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        if not self.api_key or self.api_key == "your_google_gemini_api_key_here":
-            print("ERROR: GEMINI_API_KEY is not set in .env")
-            sys.exit(1)
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
+        self.qwen_api_key = os.getenv("DASHSCOPE_API_KEY")
             
         # These could be loaded from config/dotenv in a real setup
         self.input_device = int(os.getenv("INPUT_DEVICE_INDEX")) if os.getenv("INPUT_DEVICE_INDEX") else None
@@ -43,7 +42,7 @@ class AppRunner:
         self.audio_capture_task = None
         self.audio_playback_task = None
         
-    async def start_pipeline(self, gui_instance, context_val: str = "", lang_val: str = "Auto"):
+    async def start_pipeline(self, gui_instance, context_val: str = "", lang_val: str = "Auto", model_val: str = "Gemini"):
         gui_instance.update_status("Starting Audio Devices...")
         try:
             # 1. Start Audio I/O
@@ -53,18 +52,34 @@ class AppRunner:
             self.audio_capture_task = asyncio.create_task(self._capture_worker())
             self.audio_playback_task = asyncio.create_task(self._playback_worker())
             
-            # 2. Start Gemini Network Session
-            gui_instance.update_status("Connecting to Gemini...")
-            gemini_session = GeminiSession(
-                api_key=self.api_key,
-                audio_in_q=self.audio_in_q,
-                audio_out_q=self.audio_out_q,
-                text_in_q=self.text_in_q,
-                gui_instance=gui_instance, # Passing gui instance to pipe transcript logs
-                call_purpose=context_val,
-                target_language=lang_val
-            )
-            self.session_task = asyncio.create_task(gemini_session.run())
+            # 2. Start Network Session
+            gui_instance.update_status(f"Connecting to {model_val}...")
+            if model_val == "Qwen":
+                if not self.qwen_api_key:
+                    raise ValueError("DASHSCOPE_API_KEY is not set in .env")
+                session = QwenSession(
+                    api_key=self.qwen_api_key,
+                    audio_in_q=self.audio_in_q,
+                    audio_out_q=self.audio_out_q,
+                    text_in_q=self.text_in_q,
+                    gui_instance=gui_instance,
+                    call_purpose=context_val,
+                    target_language=lang_val
+                )
+            else:
+                if not self.gemini_api_key or self.gemini_api_key == "your_google_gemini_api_key_here":
+                    raise ValueError("GEMINI_API_KEY is not set in .env")
+                session = GeminiSession(
+                    api_key=self.gemini_api_key,
+                    audio_in_q=self.audio_in_q,
+                    audio_out_q=self.audio_out_q,
+                    text_in_q=self.text_in_q,
+                    gui_instance=gui_instance,
+                    call_purpose=context_val,
+                    target_language=lang_val
+                )
+
+            self.session_task = asyncio.create_task(session.run())
             
             gui_instance.update_status("Connected and Listening")
         except Exception as e:
