@@ -79,21 +79,23 @@ The app supports both transcript preview and finalized transcript insertion.
 
 ### 4.1 Input Transcript
 
-Used to show recognized user speech in the `Voice Input` card and in the transcript log when finalized.
+Used to show recognized user speech in the transcript area (preview and then finalized insertion).
+The `Voice Input` card is level-only monitoring and does not display transcript text.
 
 - Gemini source: `serverContent.inputTranscription`
 - Qwen source: `conversation.item.input_audio_transcription.completed`
 
 ### 4.2 Output Transcript
 
-Used to show recognized assistant speech in the `Voice Output` card and in the transcript log when finalized.
+Used to show recognized assistant speech in the transcript area (preview and then finalized insertion).
+The `Voice Output` card is level-only monitoring and does not display transcript text.
 
 - Gemini source: `serverContent.outputTranscription`
 - Qwen source: `response.audio_transcript.done`
 
 ### 4.3 UI Behavior
 
-The latest recognized user and assistant text is stored separately from the main transcript timeline so the monitoring cards can show the newest recognition result even before the conversation log grows further.
+The latest recognized user and assistant text is stored separately from the main transcript timeline so the transcript area can show a stable "preview line" while streaming, then commit finalized segments into the main conversation log.
 
 ## 5. Audio Output Path
 
