@@ -39,8 +39,11 @@ const DEFAULT_CALL_PURPOSE = 'You are an intelligent AI Phone Assistant...';
 export const useAppStore = create<AppState>((set) => ({
   model: 'Gemini',
   setModel: (m) => set({ model: m }),
-  language: 'Auto',
-  setLanguage: (l) => set({ language: l }),
+  language: localStorage.getItem('target_language') || 'Auto',
+  setLanguage: (language) => {
+    localStorage.setItem('target_language', language);
+    set({ language });
+  },
   uiLanguage: (localStorage.getItem('ui_language') as UiLanguage | null) || 'auto',
   setUiLanguage: (uiLanguage) => {
     localStorage.setItem('ui_language', uiLanguage);

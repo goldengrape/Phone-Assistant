@@ -71,6 +71,7 @@ export class AudioCapture {
       this.monitorNode.connect(this.audioContext.destination);
 
     } catch (error) {
+      this.stop();
       console.error("Error starting audio capture:", error);
       throw error;
     }

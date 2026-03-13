@@ -10,66 +10,19 @@ import { GeminiLiveClient } from './api/GeminiLiveClient';
 import { QwenLiveClient } from './api/QwenLiveClient';
 import { AIClient, AIClientOptions } from './api/AIClient';
 import { resolveLocale, targetLanguageOptions, translations, uiLanguageOptions } from './i18n';
+import { estimateTokens, getPcmLevel, mergeTranscriptText } from './lib/sessionUtils';
 import { cn } from './lib/utils';
 import { geminiVoiceOptions, type GeminiVoiceName } from './voices';
 
 const OUTPUT_ACTIVITY_RESET_MS = 250;
 const GEMINI_CONTEXT_TRIGGER_TOKENS = 104857;
 const GEMINI_CONTEXT_TARGET_TOKENS = 52428;
-const APPROX_CHARS_PER_TOKEN = 4;
-
 type TranscriptRole = 'AI' | 'User';
 
 type LiveTranscriptPreview = {
   text: string;
   updatedAt: number;
 };
-
-function mergeTranscriptText(previousText: string, incomingText: string): string {
-  const previous = previousText.trim();
-  const incoming = incomingText.trim();
-
-  if (!incoming) return previous;
-  if (!previous) return incoming;
-  if (previous === incoming) return previous;
-  if (incoming.startsWith(previous)) return incoming;
-  if (previous.startsWith(incoming)) return previous;
-  if (previous.includes(incoming)) return previous;
-
-  let overlap = 0;
-  const maxOverlap = Math.min(previous.length, incoming.length);
-  for (let i = maxOverlap; i > 0; i--) {
-    if (previous.slice(-i) === incoming.slice(0, i)) {
-      overlap = i;
-      break;
-    }
-  }
-
-  if (overlap > 0) {
-    return `${previous}${incoming.slice(overlap)}`;
-  }
-
-  const needsSpace = !previous.endsWith(' ') && !incoming.startsWith(' ');
-  return `${previous}${needsSpace ? ' ' : ''}${incoming}`;
-}
-
-function estimateTokens(text: string): number {
-  const normalized = text.trim();
-  if (!normalized) return 0;
-  return Math.max(1, Math.ceil(normalized.length / APPROX_CHARS_PER_TOKEN));
-}
-
-function getPcmLevel(samples: Int16Array): number {
-  if (!samples.length) return 0;
-
-  let sumSquares = 0;
-  for (let i = 0; i < samples.length; i++) {
-    const normalized = samples[i] / 32768;
-    sumSquares += normalized * normalized;
-  }
-
-  return Math.min(1, Math.sqrt(sumSquares / samples.length) * 6);
-}
 
 export default function App() {
   const {
@@ -276,6 +229,7 @@ export default function App() {
   const speakerResetTimerRef = useRef<number | null>(null);
   const inputObservedRef = useRef(false);
   const outputObservedRef = useRef(false);
+  const ignoreNextDisconnectedRef = useRef(false);
   const liveTranscriptPreviewsRef = useRef<Partial<Record<TranscriptRole, LiveTranscriptPreview>>>({});
 
   // Auto-scroll messages
@@ -343,6 +297,48 @@ export default function App() {
     });
   };
 
+  const cleanupSession = ({ disconnectClient = false, includeCallEndedMessage = false } = {}) => {
+    if (speakerResetTimerRef.current !== null) {
+      window.clearTimeout(speakerResetTimerRef.current);
+      speakerResetTimerRef.current = null;
+    }
+
+    inputObservedRef.current = false;
+    outputObservedRef.current = false;
+
+    const client = clientRef.current;
+    clientRef.current = null;
+
+    if (captureRef.current) {
+      captureRef.current.onLevelChange = null;
+      captureRef.current.stop();
+      captureRef.current = null;
+    }
+    if (playbackRef.current) {
+      playbackRef.current.stop();
+      playbackRef.current = null;
+    }
+    if (disconnectClient && client) {
+      ignoreNextDisconnectedRef.current = true;
+      client.disconnect();
+    }
+
+    setMicLevel(0);
+    setSpeakerLevel(0);
+    setMicState('idle');
+    setSpeakerState('idle');
+    setInputConfirmed(false);
+    setOutputConfirmed(false);
+    setLiveTranscriptPreviews({});
+    setStatus('disconnected');
+    setSessionStartedAt(null);
+    setSessionClock(null);
+
+    if (includeCallEndedMessage) {
+      addMessage({ role: 'System', text: text.system.callEnded });
+    }
+  };
+
   const handleStart = async (startMarker: number) => {
     if (status !== 'disconnected') return;
 
@@ -358,6 +354,7 @@ export default function App() {
     setSessionClock(startMarker);
     inputObservedRef.current = false;
     outputObservedRef.current = false;
+    ignoreNextDisconnectedRef.current = false;
     setMicLevel(0);
     setSpeakerLevel(0);
     setMicState('monitoring');
@@ -437,6 +434,12 @@ export default function App() {
             addMessage({ role: 'System', text: text.system.connectedRealtimeApi(modelLabel) });
             setMicState('monitoring');
             setSpeakerState('waiting');
+          } else if (newState === 'disconnected') {
+            if (ignoreNextDisconnectedRef.current) {
+              ignoreNextDisconnectedRef.current = false;
+              return;
+            }
+            cleanupSession({ includeCallEndedMessage: true });
           } else if (newState === 'error') {
             addMessage({ role: 'System', text: text.system.connectionError });
             handleStop();
@@ -454,44 +457,13 @@ export default function App() {
 
     } catch (err) {
       console.error(err);
+      cleanupSession({ disconnectClient: true });
       addMessage({ role: 'System', text: `${text.system.errorPrefix}: ${(err as Error).message}` });
-      setStatus('disconnected');
-      setSessionStartedAt(null);
-      setSessionClock(null);
     }
   };
 
   const handleStop = () => {
-    if (speakerResetTimerRef.current !== null) {
-      window.clearTimeout(speakerResetTimerRef.current);
-      speakerResetTimerRef.current = null;
-    }
-    inputObservedRef.current = false;
-    outputObservedRef.current = false;
-    if (clientRef.current) {
-      clientRef.current.disconnect();
-      clientRef.current = null;
-    }
-    if (captureRef.current) {
-      captureRef.current.onLevelChange = null;
-      captureRef.current.stop();
-      captureRef.current = null;
-    }
-    if (playbackRef.current) {
-      playbackRef.current.stop();
-      playbackRef.current = null;
-    }
-    setMicLevel(0);
-    setSpeakerLevel(0);
-    setMicState('idle');
-    setSpeakerState('idle');
-    setInputConfirmed(false);
-    setOutputConfirmed(false);
-    setLiveTranscriptPreviews({});
-    setStatus('disconnected');
-    setSessionStartedAt(null);
-    setSessionClock(null);
-    addMessage({ role: 'System', text: text.system.callEnded });
+    cleanupSession({ disconnectClient: true, includeCallEndedMessage: true });
   };
 
   const testApiKey = async () => {

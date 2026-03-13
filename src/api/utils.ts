@@ -1,6 +1,6 @@
 // Helper to convert Int16Array to base64 string
 export function int16ToBase64(pcm16: Int16Array): string {
-  const bytes = new Uint8Array(pcm16.buffer);
+  const bytes = new Uint8Array(pcm16.buffer, pcm16.byteOffset, pcm16.byteLength);
   let binary = "";
   for (let i = 0; i < bytes.byteLength; i++) {
     binary += String.fromCharCode(bytes[i]);

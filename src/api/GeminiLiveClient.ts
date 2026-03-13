@@ -123,7 +123,7 @@ export class GeminiLiveClient extends AIClient {
     this.session.sendRealtimeInput({
       media: {
         mimeType: 'audio/pcm;rate=16000',
-        data: btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer))),
+        data: btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer, pcm16.byteOffset, pcm16.byteLength))),
       },
     });
   }
