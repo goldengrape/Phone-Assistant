@@ -20,6 +20,7 @@ const mockState = vi.hoisted(() => ({
     sendAudio: ReturnType<typeof vi.fn>;
     sendWhisper: ReturnType<typeof vi.fn>;
     options: {
+      sessionInstruction?: string;
       onStateChange: (state: 'disconnected' | 'connecting' | 'connected' | 'error') => void;
     };
   }>,
@@ -155,6 +156,18 @@ describe('App session lifecycle', () => {
     expect(playback.stop).toHaveBeenCalledTimes(1);
     expect(client.disconnect).not.toHaveBeenCalled();
     expect(screen.getAllByText('Call ended.')).toHaveLength(1);
+  });
+
+  it('passes the selected skill inside the final Gemini session instruction', async () => {
+    const user = userEvent.setup();
+    await renderFreshApp();
+
+    await user.selectOptions(screen.getByLabelText('Active skill'), 'negotiation');
+    await user.click(screen.getByRole('button', { name: 'Start Live Call' }));
+    await screen.findByRole('button', { name: 'End Session' });
+
+    expect(mockState.geminiInstances[0].options.sessionInstruction).toContain('ACTIVE SKILL PROFILE: Negotiation');
+    expect(mockState.geminiInstances[0].options.sessionInstruction).toContain('SKILL OBJECTIVE: Improve pricing, terms, or concessions');
   });
 
   it('cleans up started resources if provider connect fails', async () => {

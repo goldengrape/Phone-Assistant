@@ -147,6 +147,33 @@ describe('GeminiLiveClient', () => {
     expect(actualConnectArgs.config.systemInstruction).not.toContain('OUTPUT LANGUAGE CONSTRAINT');
   });
 
+  it('prefers a prebuilt session instruction when one is provided', async () => {
+    const session = createSessionMock();
+    let connectArgs: ConnectArgs | null = null;
+    geminiMock.connectMock.mockImplementation(async (args) => {
+      connectArgs = args;
+      args.callbacks.onopen();
+      return session;
+    });
+
+    const options = {
+      apiKey: 'gemini-test-key',
+      sessionInstruction: 'BASE\n\nACTIVE SKILL PROFILE: Negotiation\n\nCALL PURPOSE: Custom goal',
+      callPurpose: 'This legacy field should not be appended again',
+      targetLanguage: 'Spanish',
+      onAudioData: vi.fn(),
+      onTranscript: vi.fn(),
+      onTranscriptPreview: vi.fn(),
+      onStateChange: vi.fn(),
+    };
+    const client = new GeminiLiveClient(options);
+
+    await client.connect();
+
+    const actualConnectArgs = assertExists(connectArgs, 'connect args') as ConnectArgs;
+    expect(actualConnectArgs.config.systemInstruction).toBe('BASE\n\nACTIVE SKILL PROFILE: Negotiation\n\nCALL PURPOSE: Custom goal');
+  });
+
   it('encodes only the selected audio view and sends whisper content after connect', async () => {
     const session = createSessionMock();
     geminiMock.connectMock.mockImplementation(async (args) => {
