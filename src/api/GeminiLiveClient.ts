@@ -7,6 +7,7 @@ import {
 } from '@google/genai';
 import { AIClient, AIClientOptions } from './AIClient';
 import { base64ToInt16 } from './utils';
+import { DEFAULT_GEMINI_VOICE } from '../voices';
 
 function parseSampleRate(mimeType?: string): number | undefined {
   if (!mimeType) return undefined;
@@ -63,7 +64,7 @@ export class GeminiLiveClient extends AIClient {
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName: 'Zephyr',
+                voiceName: this.options.voiceName || DEFAULT_GEMINI_VOICE,
               },
             },
           },

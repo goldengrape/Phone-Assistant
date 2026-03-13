@@ -20,15 +20,19 @@ This repository is currently a frontend-first implementation.
 - Output audio: streamed PCM playback with dynamic sample-rate handling
 - UI languages: English, Chinese, Japanese, Korean, French, Spanish, plus follow-system mode
 - Target output languages: Auto, English, Chinese, Japanese, Korean, French, Spanish
+- Gemini voices: 30 selectable official voice presets
 
 ## Key Features
 
 - Realtime voice input and output
 - Supervisor whisper commands that do not get spoken aloud
 - Live transcript area with user, assistant, supervisor, and system messages
-- Voice input and voice output monitoring cards
+- Compact voice input and voice output level monitoring cards
 - API key local persistence in browser storage
 - Editable system instructions / call purpose
+- Separate interface-language and AI-spoken-language settings
+- Sticky whisper command bar at the bottom for fast supervision
+- Collapsible session-context diagnostics for Gemini
 - Exportable session log
 - Responsive UI for desktop and narrow screens
 - Adaptive visual theme based on system color scheme
@@ -61,6 +65,7 @@ UI (React)
 - Requests audio output modality
 - Enables input and output audio transcription
 - Default voice: `Zephyr`
+- Supports all 30 official prebuilt Gemini voice options through the UI
 
 ### Qwen
 
@@ -105,6 +110,11 @@ npm run lint
 
 API keys are currently stored in browser local storage through the UI.
 
+The settings UI distinguishes between:
+
+- interface language used by the supervisor UI
+- AI spoken language used for model output behavior
+
 Optional environment variables are also supported by the clients:
 
 ```env
@@ -139,6 +149,7 @@ src/
 - `docs/MDD.md`: current module design document
 - `docs/algorithm_description.md`: implementation-level processing description
 - `docs/skill_evaluation_report.md`: evaluation of whether this product should add AI skills
+- `docs/ui_design_principles.md`: UI design principles for future frontend changes
 
 ## Known Constraints
 

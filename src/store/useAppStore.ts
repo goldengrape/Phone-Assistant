@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { UiLanguage } from '../i18n';
+import { DEFAULT_GEMINI_VOICE, type GeminiVoiceName } from '../voices';
 
 interface Message {
   id: string;
@@ -15,6 +16,8 @@ interface AppState {
   setLanguage: (l: string) => void;
   uiLanguage: UiLanguage;
   setUiLanguage: (language: UiLanguage) => void;
+  geminiVoice: GeminiVoiceName;
+  setGeminiVoice: (voice: GeminiVoiceName) => void;
   callPurpose: string;
   setCallPurpose: (cp: string) => void;
 
@@ -42,6 +45,11 @@ export const useAppStore = create<AppState>((set) => ({
   setUiLanguage: (uiLanguage) => {
     localStorage.setItem('ui_language', uiLanguage);
     set({ uiLanguage });
+  },
+  geminiVoice: (localStorage.getItem('gemini_voice') as GeminiVoiceName | null) || DEFAULT_GEMINI_VOICE,
+  setGeminiVoice: (geminiVoice) => {
+    localStorage.setItem('gemini_voice', geminiVoice);
+    set({ geminiVoice });
   },
   callPurpose: localStorage.getItem('call_purpose') || DEFAULT_CALL_PURPOSE,
   setCallPurpose: (callPurpose) => {

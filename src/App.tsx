@@ -11,8 +11,53 @@ import { QwenLiveClient } from './api/QwenLiveClient';
 import { AIClient, AIClientOptions } from './api/AIClient';
 import { resolveLocale, targetLanguageOptions, translations, uiLanguageOptions } from './i18n';
 import { cn } from './lib/utils';
+import { geminiVoiceOptions, type GeminiVoiceName } from './voices';
 
 const OUTPUT_ACTIVITY_RESET_MS = 250;
+const GEMINI_CONTEXT_TRIGGER_TOKENS = 104857;
+const GEMINI_CONTEXT_TARGET_TOKENS = 52428;
+const APPROX_CHARS_PER_TOKEN = 4;
+
+type TranscriptRole = 'AI' | 'User';
+
+type LiveTranscriptPreview = {
+  text: string;
+  updatedAt: number;
+};
+
+function mergeTranscriptText(previousText: string, incomingText: string): string {
+  const previous = previousText.trim();
+  const incoming = incomingText.trim();
+
+  if (!incoming) return previous;
+  if (!previous) return incoming;
+  if (previous === incoming) return previous;
+  if (incoming.startsWith(previous)) return incoming;
+  if (previous.startsWith(incoming)) return previous;
+  if (previous.includes(incoming)) return previous;
+
+  let overlap = 0;
+  const maxOverlap = Math.min(previous.length, incoming.length);
+  for (let i = maxOverlap; i > 0; i--) {
+    if (previous.slice(-i) === incoming.slice(0, i)) {
+      overlap = i;
+      break;
+    }
+  }
+
+  if (overlap > 0) {
+    return `${previous}${incoming.slice(overlap)}`;
+  }
+
+  const needsSpace = !previous.endsWith(' ') && !incoming.startsWith(' ');
+  return `${previous}${needsSpace ? ' ' : ''}${incoming}`;
+}
+
+function estimateTokens(text: string): number {
+  const normalized = text.trim();
+  if (!normalized) return 0;
+  return Math.max(1, Math.ceil(normalized.length / APPROX_CHARS_PER_TOKEN));
+}
 
 function getPcmLevel(samples: Int16Array): number {
   if (!samples.length) return 0;
@@ -31,6 +76,7 @@ export default function App() {
     model, setModel,
     language, setLanguage,
     uiLanguage, setUiLanguage,
+    geminiVoice, setGeminiVoice,
     callPurpose, setCallPurpose,
     geminiApiKey, setGeminiApiKey,
     qwenApiKey, setQwenApiKey,
@@ -40,10 +86,165 @@ export default function App() {
 
   const locale = resolveLocale(uiLanguage, typeof navigator !== 'undefined' ? navigator.language : 'en');
   const text = translations[locale];
+  const sessionContextText = {
+    en: {
+      title: 'Session Context',
+      newSession: 'New session',
+      disconnected: 'No active session',
+      resumptionOff: 'Resumption off',
+      resumptionOffHint: 'Reconnect starts a fresh Gemini session.',
+      fullContext: 'Full context retained',
+      fullContextHint: 'Estimate is below the compression trigger.',
+      compressionPossible: 'Compression may have occurred',
+      compressionPossibleHint: 'Gemini does not expose an exact compression event, so this is estimated from session length.',
+      providerHint: 'Shown for Gemini because this app enables context window compression but not session resumption.',
+      historyEstimate: 'History estimate',
+      trigger: 'Compression trigger',
+      target: 'Sliding target',
+      sessionAge: 'Session age',
+      estimateNote: 'Estimated, not exact',
+    },
+    zh: {
+      title: '会话上下文',
+      newSession: '新会话',
+      disconnected: '当前无活动会话',
+      resumptionOff: '未启用续接',
+      resumptionOffHint: '重新连接会启动一个全新的 Gemini 会话。',
+      fullContext: '上下文仍完整保留',
+      fullContextHint: '按当前估算，尚未达到压缩触发阈值。',
+      compressionPossible: '可能已发生滑窗压缩',
+      compressionPossibleHint: 'Gemini 没有暴露精确的压缩触发事件，这里是按会话长度估算。',
+      providerHint: '该提示仅针对 Gemini：当前应用启用了上下文压缩，但未启用 session resumption。',
+      historyEstimate: '历史估算',
+      trigger: '压缩触发阈值',
+      target: '滑窗目标',
+      sessionAge: '会话时长',
+      estimateNote: '仅为估算，并非精确值',
+    },
+    ja: {
+      title: 'セッション文脈',
+      newSession: '新しいセッション',
+      disconnected: 'アクティブなセッションなし',
+      resumptionOff: '再開は無効',
+      resumptionOffHint: '再接続すると新しい Gemini セッションが始まります。',
+      fullContext: '文脈は保持中',
+      fullContextHint: '推定ではまだ圧縮トリガー未満です。',
+      compressionPossible: '圧縮が発生した可能性',
+      compressionPossibleHint: 'Gemini は正確な圧縮イベントを返さないため、これは会話長からの推定です。',
+      providerHint: 'この表示は Gemini 向けです。現在の実装は context window compression を有効化し、session resumption は無効です。',
+      historyEstimate: '履歴推定',
+      trigger: '圧縮トリガー',
+      target: 'スライディング目標',
+      sessionAge: 'セッション時間',
+      estimateNote: '推定値であり正確値ではありません',
+    },
+    ko: {
+      title: '세션 컨텍스트',
+      newSession: '새 세션',
+      disconnected: '활성 세션 없음',
+      resumptionOff: '재개 비활성',
+      resumptionOffHint: '다시 연결하면 새로운 Gemini 세션이 시작됩니다.',
+      fullContext: '컨텍스트 유지 중',
+      fullContextHint: '현재 추정치는 아직 압축 임계값 아래입니다.',
+      compressionPossible: '압축이 발생했을 수 있음',
+      compressionPossibleHint: 'Gemini는 정확한 압축 이벤트를 노출하지 않으므로 세션 길이 기반 추정입니다.',
+      providerHint: '이 표시는 Gemini 기준입니다. 현재 앱은 context window compression 을 켰고 session resumption 은 끈 상태입니다.',
+      historyEstimate: '히스토리 추정',
+      trigger: '압축 임계값',
+      target: '슬라이딩 목표',
+      sessionAge: '세션 시간',
+      estimateNote: '정확한 값이 아닌 추정치입니다',
+    },
+    fr: {
+      title: 'Contexte de session',
+      newSession: 'Nouvelle session',
+      disconnected: 'Aucune session active',
+      resumptionOff: 'Reprise désactivée',
+      resumptionOffHint: 'Une reconnexion démarre une nouvelle session Gemini.',
+      fullContext: 'Contexte encore conservé',
+      fullContextHint: "L'estimation reste sous le seuil de compression.",
+      compressionPossible: 'Compression possiblement déclenchée',
+      compressionPossibleHint: "Gemini n'expose pas d'événement exact de compression ; cet état est donc estimé selon la longueur de la session.",
+      providerHint: "Affiché pour Gemini : l'application active la compression de contexte, mais pas la reprise de session.",
+      historyEstimate: 'Estimation historique',
+      trigger: 'Seuil de compression',
+      target: 'Cible glissante',
+      sessionAge: 'Durée de session',
+      estimateNote: 'Valeur estimée, non exacte',
+    },
+    es: {
+      title: 'Contexto de sesión',
+      newSession: 'Sesión nueva',
+      disconnected: 'Sin sesión activa',
+      resumptionOff: 'Reanudación desactivada',
+      resumptionOffHint: 'Al reconectar se inicia una sesión Gemini nueva.',
+      fullContext: 'Contexto aún conservado',
+      fullContextHint: 'La estimación sigue por debajo del umbral de compresión.',
+      compressionPossible: 'La compresión pudo activarse',
+      compressionPossibleHint: 'Gemini no expone un evento exacto de compresión, así que este estado es una estimación por longitud de sesión.',
+      providerHint: 'Se muestra para Gemini porque la app activa la compresión de contexto, pero no la reanudación de sesión.',
+      historyEstimate: 'Estimación de historial',
+      trigger: 'Umbral de compresión',
+      target: 'Objetivo deslizante',
+      sessionAge: 'Duración de la sesión',
+      estimateNote: 'Estimado, no exacto',
+    },
+  }[locale];
+  const settingsCopy = {
+    en: {
+      aiSpokenLanguage: 'AI Spoken Language',
+      interfaceLanguage: 'Interface Language',
+      voicePreset: 'Gemini Voice Preset',
+      providerSettings: 'Voice behavior and language can be configured independently from the interface.',
+      credentialsTitle: 'Credentials',
+      credentialsSubtitle: 'Stored locally in your browser for this device only.',
+    },
+    zh: {
+      aiSpokenLanguage: 'AI 语音语言',
+      interfaceLanguage: '界面语言',
+      voicePreset: 'Gemini 音色',
+      providerSettings: 'AI 说话语言与界面语言彼此独立，可以分别设置。',
+      credentialsTitle: '凭证',
+      credentialsSubtitle: '仅保存在当前设备浏览器本地。',
+    },
+    ja: {
+      aiSpokenLanguage: 'AI 音声言語',
+      interfaceLanguage: '画面言語',
+      voicePreset: 'Gemini 音声プリセット',
+      providerSettings: 'AI の話す言語と UI 言語は別々に設定できます。',
+      credentialsTitle: '認証情報',
+      credentialsSubtitle: 'この端末のブラウザにのみ保存されます。',
+    },
+    ko: {
+      aiSpokenLanguage: 'AI 음성 언어',
+      interfaceLanguage: '인터페이스 언어',
+      voicePreset: 'Gemini 음성 프리셋',
+      providerSettings: 'AI가 말하는 언어와 UI 언어는 서로 독립적으로 설정됩니다.',
+      credentialsTitle: '자격 증명',
+      credentialsSubtitle: '현재 브라우저 로컬 저장소에만 보관됩니다.',
+    },
+    fr: {
+      aiSpokenLanguage: "Langue parlée par l'IA",
+      interfaceLanguage: "Langue de l'interface",
+      voicePreset: 'Voix Gemini',
+      providerSettings: "La langue parlée par l'IA et la langue de l'interface sont configurées séparément.",
+      credentialsTitle: 'Identifiants',
+      credentialsSubtitle: 'Stockés localement dans ce navigateur pour cet appareil.',
+    },
+    es: {
+      aiSpokenLanguage: 'Idioma hablado por la IA',
+      interfaceLanguage: 'Idioma de la interfaz',
+      voicePreset: 'Voz de Gemini',
+      providerSettings: 'El idioma hablado por la IA y el idioma de la interfaz se configuran por separado.',
+      credentialsTitle: 'Credenciales',
+      credentialsSubtitle: 'Se guardan solo en el navegador local de este dispositivo.',
+    },
+  }[locale];
   const modelLabel = model === 'Gemini' ? text.misc.modelGemini : text.misc.modelQwen;
   const surfaceClass = 'border border-[color:var(--app-border)] bg-[var(--app-surface)] shadow-[var(--app-shadow)] backdrop-blur-xl';
   const surfaceStrongClass = 'border border-[color:var(--app-border)] bg-[var(--app-surface-strong)] shadow-[var(--app-shadow)] backdrop-blur-xl';
   const fieldClass = 'border border-[color:var(--app-input-border)] bg-[var(--app-input)] text-[var(--app-text)] shadow-inner placeholder:text-[var(--app-text-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--app-ring)]';
+  const subCardClass = 'rounded-2xl border border-[color:var(--app-border)] bg-[color:var(--app-surface-muted)]/80 p-4';
 
   const getRoleLabel = (role: 'AI' | 'User' | 'Supervisor' | 'System') => {
     if (role === 'AI') return text.misc.roleAI;
@@ -55,6 +256,7 @@ export default function App() {
   const [whisperText, setWhisperText] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [showPrompt, setShowPrompt] = useState(true);
+  const [showSessionContext, setShowSessionContext] = useState(false);
   const [testingKey, setTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
   const [micLevel, setMicLevel] = useState(0);
@@ -63,8 +265,9 @@ export default function App() {
   const [speakerState, setSpeakerState] = useState<'idle' | 'waiting' | 'playing'>('idle');
   const [inputConfirmed, setInputConfirmed] = useState(false);
   const [outputConfirmed, setOutputConfirmed] = useState(false);
-  const [latestUserTranscript, setLatestUserTranscript] = useState('');
-  const [latestAiTranscript, setLatestAiTranscript] = useState('');
+  const [liveTranscriptPreviews, setLiveTranscriptPreviews] = useState<Partial<Record<TranscriptRole, LiveTranscriptPreview>>>({});
+  const [sessionStartedAt, setSessionStartedAt] = useState<number | null>(null);
+  const [sessionClock, setSessionClock] = useState<number | null>(null);
 
   const clientRef = useRef<AIClient | null>(null);
   const captureRef = useRef<AudioCapture | null>(null);
@@ -73,13 +276,28 @@ export default function App() {
   const speakerResetTimerRef = useRef<number | null>(null);
   const inputObservedRef = useRef(false);
   const outputObservedRef = useRef(false);
+  const liveTranscriptPreviewsRef = useRef<Partial<Record<TranscriptRole, LiveTranscriptPreview>>>({});
 
   // Auto-scroll messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [liveTranscriptPreviews, messages]);
+
+  useEffect(() => {
+    liveTranscriptPreviewsRef.current = liveTranscriptPreviews;
+  }, [liveTranscriptPreviews]);
+
+  useEffect(() => {
+    if (status !== 'connected' || sessionStartedAt === null) {
+      return;
+    }
+
+    const updateAge = () => setSessionClock(performance.now());
+    const timer = window.setInterval(updateAge, 1000);
+    return () => window.clearInterval(timer);
+  }, [sessionStartedAt, status]);
 
   useEffect(() => {
     return () => {
@@ -89,7 +307,43 @@ export default function App() {
     };
   }, []);
 
-  const handleStart = async () => {
+  const clearLivePreview = (role: TranscriptRole) => {
+    setLiveTranscriptPreviews((current) => {
+      if (!current[role]) return current;
+
+      const next = { ...current };
+      delete next[role];
+      return next;
+    });
+  };
+
+  const updateLivePreview = (role: TranscriptRole, previewText: string) => {
+    const normalizedText = previewText.trim();
+    setLiveTranscriptPreviews((current) => {
+      if (!normalizedText) {
+        if (!current[role]) return current;
+
+        const next = { ...current };
+        delete next[role];
+        return next;
+      }
+
+      const mergedText = mergeTranscriptText(current[role]?.text ?? '', normalizedText);
+      if (current[role]?.text === mergedText) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [role]: {
+          text: mergedText,
+          updatedAt: Date.now(),
+        },
+      };
+    });
+  };
+
+  const handleStart = async (startMarker: number) => {
     if (status !== 'disconnected') return;
 
     const apiKey = model === 'Gemini' ? geminiApiKey : qwenApiKey;
@@ -100,6 +354,8 @@ export default function App() {
     }
 
     clearMessages();
+    setSessionStartedAt(startMarker);
+    setSessionClock(startMarker);
     inputObservedRef.current = false;
     outputObservedRef.current = false;
     setMicLevel(0);
@@ -108,8 +364,7 @@ export default function App() {
     setSpeakerState('waiting');
     setInputConfirmed(false);
     setOutputConfirmed(false);
-    setLatestUserTranscript('');
-    setLatestAiTranscript('');
+    setLiveTranscriptPreviews({});
     if (speakerResetTimerRef.current !== null) {
       window.clearTimeout(speakerResetTimerRef.current);
       speakerResetTimerRef.current = null;
@@ -142,6 +397,7 @@ export default function App() {
       const options = {
         callPurpose,
         targetLanguage: language,
+        voiceName: model === 'Gemini' ? geminiVoice : undefined,
         apiKey: apiKey,
         onAudioData: (pcm16: Int16Array, sampleRate?: number) => {
           const level = getPcmLevel(pcm16);
@@ -166,20 +422,14 @@ export default function App() {
             void playbackRef.current.playChunk(pcm16, sampleRate);
           }
         },
-        onTranscriptPreview: (role: 'AI' | 'User', text: string) => {
-          if (role === 'User') {
-            setLatestUserTranscript(text);
-          } else {
-            setLatestAiTranscript(text);
-          }
+        onTranscriptPreview: (role: TranscriptRole, text: string) => {
+          updateLivePreview(role, text);
         },
         onTranscript: (role: string, text: string) => {
-          if (role === 'User') {
-            setLatestUserTranscript(text);
-          } else if (role === 'AI') {
-            setLatestAiTranscript(text);
-          }
-          addMessage({ role: role as 'AI' | 'User', text });
+          const transcriptRole = role as TranscriptRole;
+          const mergedText = mergeTranscriptText(liveTranscriptPreviewsRef.current[transcriptRole]?.text ?? '', text);
+          clearLivePreview(transcriptRole);
+          addMessage({ role: transcriptRole, text: mergedText });
         },
         onStateChange: (newState: 'disconnected' | 'connecting' | 'connected' | 'error') => {
           setStatus(newState);
@@ -206,6 +456,8 @@ export default function App() {
       console.error(err);
       addMessage({ role: 'System', text: `${text.system.errorPrefix}: ${(err as Error).message}` });
       setStatus('disconnected');
+      setSessionStartedAt(null);
+      setSessionClock(null);
     }
   };
 
@@ -235,9 +487,10 @@ export default function App() {
     setSpeakerState('idle');
     setInputConfirmed(false);
     setOutputConfirmed(false);
-    setLatestUserTranscript('');
-    setLatestAiTranscript('');
+    setLiveTranscriptPreviews({});
     setStatus('disconnected');
+    setSessionStartedAt(null);
+    setSessionClock(null);
     addMessage({ role: 'System', text: text.system.callEnded });
   };
 
@@ -265,6 +518,7 @@ export default function App() {
             setTestingKey(false);
           }
         },
+        voiceName: model === 'Gemini' ? geminiVoice : undefined,
         apiKey: apiKey
       };
 
@@ -307,6 +561,40 @@ export default function App() {
     a.download = `transcript_${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const getLastTranscriptText = (role: TranscriptRole) => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === role) {
+        return messages[i].text.trim();
+      }
+    }
+
+    return '';
+  };
+
+  const liveTranscriptEntries = (Object.entries(liveTranscriptPreviews) as Array<[TranscriptRole, LiveTranscriptPreview]>)
+    .filter(([, preview]) => preview.text.trim().length > 0)
+    .filter(([role, preview]) => preview.text.trim() !== getLastTranscriptText(role))
+    .sort(([, a], [, b]) => a.updatedAt - b.updatedAt);
+
+  const hasTranscriptContent = messages.length > 0 || liveTranscriptEntries.length > 0;
+  const contextRelevantMessages = messages.filter((msg) => msg.role === 'AI' || msg.role === 'User' || msg.role === 'Supervisor');
+  const transcriptPreviewTokenEstimate = liveTranscriptEntries.reduce((total, [, preview]) => total + estimateTokens(preview.text), 0);
+  const contextTokenEstimate = estimateTokens(callPurpose)
+    + contextRelevantMessages.reduce((total, msg) => total + estimateTokens(msg.text), 0)
+    + transcriptPreviewTokenEstimate;
+  const contextUsageRatio = Math.min(1, contextTokenEstimate / GEMINI_CONTEXT_TRIGGER_TOKENS);
+  const contextCompressionLikely = model === 'Gemini' && contextTokenEstimate >= GEMINI_CONTEXT_TRIGGER_TOKENS;
+  const sessionAgeMs = status === 'connected' && sessionStartedAt !== null && sessionClock !== null
+    ? Math.max(0, Math.round(sessionClock - sessionStartedAt))
+    : 0;
+  const formatTokenCount = (value: number) => new Intl.NumberFormat().format(value);
+  const formatDuration = (durationMs: number) => {
+    const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -364,47 +652,77 @@ export default function App() {
         {/* Collapsible Settings Panel */}
         {showSettings && (
           <div className={cn(
-            "mx-auto mt-4 max-w-6xl rounded-2xl p-4 animate-in slide-in-from-top-2 duration-200",
+            "mx-auto mt-4 max-w-6xl rounded-3xl p-4 animate-in slide-in-from-top-2 duration-200 sm:p-5",
             surfaceClass
           )}>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{text.settings.modelConfiguration}</h3>
-                <div className="space-y-2">
-                  <label className="text-xs text-[var(--app-text-soft)]">{text.settings.targetLanguage}</label>
-                  <select
-                    disabled={status !== 'disconnected'}
-                    className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                  >
-                    {targetLanguageOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {text.languageLabels[option]}
-                      </option>
-                    ))}
-                  </select>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+              <div className={cn("space-y-4", subCardClass)}>
+                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{text.settings.modelConfiguration}</h3>
+                    <p className="mt-1 text-xs text-[var(--app-text-soft)]">{settingsCopy.providerSettings}</p>
+                  </div>
+                  <div className="rounded-full border border-[color:var(--app-border)] bg-[var(--app-input)] px-3 py-1 text-[11px] font-medium text-[var(--app-text-soft)]">
+                    {modelLabel}
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-xs text-[var(--app-text-soft)]">{text.settings.interfaceLanguage}</label>
-                  <select
-                    className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
-                    value={uiLanguage}
-                    onChange={(e) => setUiLanguage(e.target.value as (typeof uiLanguageOptions)[number])}
-                  >
-                    {uiLanguageOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {text.uiLanguageLabels[option]}
-                      </option>
-                    ))}
-                  </select>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-[var(--app-text-soft)]">{settingsCopy.aiSpokenLanguage}</label>
+                    <select
+                      disabled={status !== 'disconnected'}
+                      className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                    >
+                      {targetLanguageOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {text.languageLabels[option]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-xs font-medium text-[var(--app-text-soft)]">{settingsCopy.interfaceLanguage}</label>
+                    <select
+                      className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
+                      value={uiLanguage}
+                      onChange={(e) => setUiLanguage(e.target.value as (typeof uiLanguageOptions)[number])}
+                    >
+                      {uiLanguageOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {text.uiLanguageLabels[option]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {model === 'Gemini' && (
+                    <div className="space-y-2 lg:col-span-2">
+                      <label className="text-xs font-medium text-[var(--app-text-soft)]">{settingsCopy.voicePreset}</label>
+                      <select
+                        disabled={status !== 'disconnected'}
+                        className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
+                        value={geminiVoice}
+                        onChange={(e) => setGeminiVoice(e.target.value as GeminiVoiceName)}
+                      >
+                        {geminiVoiceOptions.map((voice) => (
+                          <option key={voice.name} value={voice.name}>
+                            {`${voice.name} - ${voice.description}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{text.settings.apiKeys}</h3>
-                  <p className="text-[11px] text-[var(--app-text-soft)]">{text.settings.keysStoredLocal}</p>
+              <div className={cn("space-y-4", subCardClass)}>
+                <div className="flex flex-col gap-1">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{settingsCopy.credentialsTitle}</h3>
+                  <p className="text-xs text-[var(--app-text-soft)]">{settingsCopy.credentialsSubtitle}</p>
                 </div>
                 <div className="space-y-3">
                   <div className="relative">
@@ -477,16 +795,16 @@ export default function App() {
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className={cn("rounded-2xl p-4", surfaceClass)}>
+          <div className={cn("rounded-2xl p-3.5", surfaceClass)}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl border",
+                  "flex h-9 w-9 items-center justify-center rounded-xl border",
                   micState === 'speaking'
                     ? "bg-green-500/10 border-green-500/30 text-green-400"
                     : "bg-[var(--app-surface-muted)] border-[color:var(--app-border)] text-[var(--app-text-soft)]"
                 )}>
-                  <Mic size={18} />
+                  <Mic size={16} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-[var(--app-text)]">{text.voice.inputTitle}</p>
@@ -519,21 +837,18 @@ export default function App() {
                 style={{ width: `${Math.round(micLevel * 100)}%` }}
               />
             </div>
-            <div className="mt-3 min-h-10 rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] px-3 py-2 text-xs text-[var(--app-text-soft)]">
-              {latestUserTranscript || text.voice.userSpeechPlaceholder}
-            </div>
           </div>
 
-          <div className={cn("rounded-2xl p-4", surfaceClass)}>
+          <div className={cn("rounded-2xl p-3.5", surfaceClass)}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl border",
+                  "flex h-9 w-9 items-center justify-center rounded-xl border",
                   speakerState === 'playing'
                     ? "bg-blue-500/10 border-blue-500/30 text-blue-300"
                     : "bg-[var(--app-surface-muted)] border-[color:var(--app-border)] text-[var(--app-text-soft)]"
                 )}>
-                  <Volume2 size={18} />
+                  <Volume2 size={16} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-[var(--app-text)]">{text.voice.outputTitle}</p>
@@ -563,11 +878,80 @@ export default function App() {
                 style={{ width: `${Math.round(speakerLevel * 100)}%` }}
               />
             </div>
-            <div className="mt-3 min-h-10 rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] px-3 py-2 text-xs text-[var(--app-text-soft)]">
-              {latestAiTranscript || text.voice.assistantSpeechPlaceholder}
-            </div>
           </div>
         </section>
+
+        {model === 'Gemini' && (
+          <section className={cn("rounded-2xl p-4", surfaceClass)}>
+            <button
+              onClick={() => setShowSessionContext((current) => !current)}
+              className="flex w-full items-center justify-between gap-4 text-left"
+            >
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{sessionContextText.title}</h2>
+                <p className="mt-1 text-xs text-[var(--app-text-soft)]">
+                  {showSessionContext ? sessionContextText.providerHint : sessionContextText.fullContextHint}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <span
+                  className={cn(
+                    "rounded-full border px-3 py-1 text-[11px] font-semibold",
+                    contextCompressionLikely
+                      ? "border-amber-500/25 bg-amber-500/10 text-amber-500"
+                      : "border-emerald-500/25 bg-emerald-500/10 text-emerald-500"
+                  )}
+                >
+                  {contextCompressionLikely ? sessionContextText.compressionPossible : sessionContextText.fullContext}
+                </span>
+                {showSessionContext ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+            </button>
+
+            {showSessionContext && (
+              <div className="mt-4">
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-3 py-1 text-[11px] font-semibold text-blue-500">
+                    {status === 'connected' ? sessionContextText.newSession : sessionContextText.disconnected}
+                  </span>
+                  <span className="rounded-full border border-[color:var(--app-border)] bg-[var(--app-surface-muted)] px-3 py-1 text-[11px] font-semibold text-[var(--app-text-soft)]">
+                    {sessionContextText.resumptionOff}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] p-3">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--app-text-soft)]">{sessionContextText.historyEstimate}</div>
+                    <div className="mt-2 text-lg font-semibold text-[var(--app-text)]">
+                      {`${formatTokenCount(contextTokenEstimate)} / ${formatTokenCount(GEMINI_CONTEXT_TRIGGER_TOKENS)}`}
+                    </div>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--app-surface-muted)]">
+                      <div
+                        className={cn("h-full rounded-full transition-[width] duration-300", contextCompressionLikely ? "bg-amber-500" : "bg-emerald-500")}
+                        style={{ width: `${Math.max(4, Math.round(contextUsageRatio * 100))}%` }}
+                      />
+                    </div>
+                    <div className="mt-2 text-xs text-[var(--app-text-soft)]">{sessionContextText.estimateNote}</div>
+                  </div>
+
+                  <div className="rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] p-3">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--app-text-soft)]">{sessionContextText.trigger}</div>
+                    <div className="mt-2 text-lg font-semibold text-[var(--app-text)]">{formatTokenCount(GEMINI_CONTEXT_TRIGGER_TOKENS)}</div>
+                    <div className="mt-2 text-xs text-[var(--app-text-soft)]">{contextCompressionLikely ? sessionContextText.compressionPossibleHint : sessionContextText.fullContextHint}</div>
+                  </div>
+
+                  <div className="rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] p-3">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--app-text-soft)]">{sessionContextText.sessionAge}</div>
+                    <div className="mt-2 text-lg font-semibold text-[var(--app-text)]">{status === 'connected' ? formatDuration(sessionAgeMs) : '--:--'}</div>
+                    <div className="mt-2 text-xs text-[var(--app-text-soft)]">
+                      {`${sessionContextText.target}: ${formatTokenCount(GEMINI_CONTEXT_TARGET_TOKENS)}. ${sessionContextText.resumptionOffHint}`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Transcript Area */}
         <div
@@ -577,7 +961,7 @@ export default function App() {
             surfaceStrongClass
           )}
         >
-          {messages.length === 0 ? (
+          {!hasTranscriptContent ? (
             <div className="flex h-full flex-col items-center justify-center space-y-4 text-[var(--app-text-soft)]">
               <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[color:var(--app-border)] bg-[var(--app-surface-muted)] transition-colors duration-500">
                 <MessageSquare size={32} className="opacity-40" />
@@ -588,40 +972,64 @@ export default function App() {
               </div>
             </div>
           ) : (
-            messages.map((msg) => (
-              <div key={msg.id} className={cn(
-                "flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300",
-                msg.role === 'Supervisor' ? "items-end" : "items-start"
-              )}>
-                <div className={cn(
-                  "relative max-w-[94%] rounded-2xl px-4 py-3 text-sm shadow-sm md:text-base sm:max-w-[85%]",
-                  msg.role === 'AI' ? "bg-blue-600/10 border border-blue-500/20 text-blue-100 rounded-tl-none" :
-                  msg.role === 'User' ? "rounded-tl-none border border-[color:var(--app-input-border)] bg-[var(--app-input)] text-[var(--app-text)]" :
-                  msg.role === 'Supervisor' ? "bg-purple-600/20 border border-purple-500/30 text-purple-100 rounded-tr-none" :
-                  "mx-auto border-none bg-transparent py-1 text-center text-[10px] italic text-[var(--app-text-soft)]"
+            <>
+              {messages.map((msg) => (
+                <div key={msg.id} className={cn(
+                  "flex flex-col animate-in fade-in slide-in-from-bottom-2 duration-300",
+                  msg.role === 'Supervisor' ? "items-end" : "items-start"
                 )}>
-                  {msg.role !== 'System' && (
-                    <div className="mb-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest opacity-60">
-                      <span>{getRoleLabel(msg.role)}</span>
-                      <span className="w-1 h-1 bg-current rounded-full" />
-                      <span className="font-mono">{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                    </div>
-                  )}
-                  <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+                  <div className={cn(
+                    "relative max-w-[94%] rounded-2xl px-4 py-3 text-sm shadow-sm md:text-base sm:max-w-[85%]",
+                    msg.role === 'AI' ? "rounded-tl-none border bg-[var(--app-bubble-ai-bg)] text-[var(--app-bubble-ai-text)] border-[color:var(--app-bubble-ai-border)]" :
+                    msg.role === 'User' ? "rounded-tl-none border bg-[var(--app-bubble-user-bg)] text-[var(--app-bubble-user-text)] border-[color:var(--app-bubble-user-border)]" :
+                    msg.role === 'Supervisor' ? "rounded-tr-none border bg-[var(--app-bubble-supervisor-bg)] text-[var(--app-bubble-supervisor-text)] border-[color:var(--app-bubble-supervisor-border)]" :
+                    "mx-auto border-none bg-transparent py-1 text-center text-[10px] italic text-[var(--app-system-text)]"
+                  )}>
+                    {msg.role !== 'System' && (
+                      <div className="mb-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest opacity-70">
+                        <span>{getRoleLabel(msg.role)}</span>
+                        <span className="h-1 w-1 rounded-full bg-current" />
+                        <span className="font-mono">{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                      </div>
+                    )}
+                    <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
+                  </div>
                 </div>
-              </div>
-            ))
+              ))}
+
+              {liveTranscriptEntries.map(([role, preview]) => (
+                <div key={`preview-${role}`} className="flex flex-col items-start animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div
+                    className={cn(
+                      "relative max-w-[94%] rounded-2xl border border-dashed px-4 py-3 text-sm shadow-sm md:text-base sm:max-w-[85%]",
+                      role === 'AI'
+                        ? "rounded-tl-none bg-[var(--app-bubble-ai-bg)] text-[var(--app-bubble-ai-text)] border-[color:var(--app-bubble-ai-border)]"
+                        : "rounded-tl-none bg-[var(--app-bubble-user-bg)] text-[var(--app-bubble-user-text)] border-[color:var(--app-bubble-user-border)]"
+                    )}
+                  >
+                    <div className="mb-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest opacity-70">
+                      <span>{getRoleLabel(role)}</span>
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-current" />
+                      <span className="font-mono">{new Date(preview.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    </div>
+                    <div className="whitespace-pre-wrap leading-relaxed opacity-90">{preview.text}</div>
+                  </div>
+                </div>
+              ))}
+            </>
           )}
         </div>
       </main>
 
       {/* Control Area */}
-      <footer className="shrink-0 border-t border-[color:var(--app-border)] bg-[var(--app-surface-strong)]/90 px-4 py-4 shadow-[var(--app-shadow)] backdrop-blur-xl">
+      <footer className="sticky bottom-0 z-20 shrink-0 border-t border-[color:var(--app-border)] bg-[var(--app-surface-strong)]/94 px-4 py-4 shadow-[var(--app-shadow)] backdrop-blur-xl supports-[padding:max(0px)]:pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-center">
           <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
             {status === 'disconnected' ? (
               <button
-                onClick={handleStart}
+                onClick={(event) => {
+                  void handleStart(event.timeStamp);
+                }}
                 className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 px-8 py-3.5 font-bold text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all hover:bg-blue-500 active:scale-95 sm:w-auto"
               >
                 <Play size={20} fill="currentColor" />

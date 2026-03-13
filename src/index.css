@@ -66,6 +66,16 @@
     --app-text: #15202e;
     --app-text-muted: #314155;
     --app-text-soft: #63748a;
+    --app-bubble-ai-bg: rgba(59, 130, 246, 0.14);
+    --app-bubble-ai-border: rgba(59, 130, 246, 0.28);
+    --app-bubble-ai-text: #163a74;
+    --app-bubble-user-bg: rgba(252, 253, 255, 0.96);
+    --app-bubble-user-border: rgba(104, 122, 145, 0.3);
+    --app-bubble-user-text: #162130;
+    --app-bubble-supervisor-bg: rgba(216, 180, 254, 0.42);
+    --app-bubble-supervisor-border: rgba(168, 85, 247, 0.3);
+    --app-bubble-supervisor-text: #68208f;
+    --app-system-text: #55667a;
     --app-ring: rgba(37, 99, 235, 0.35);
     --app-shadow: 0 18px 45px rgba(37, 57, 83, 0.08);
   }
@@ -102,6 +112,16 @@
       --app-text: #f5f7fb;
       --app-text-muted: #d3dae4;
       --app-text-soft: #8e9aad;
+      --app-bubble-ai-bg: rgba(37, 99, 235, 0.18);
+      --app-bubble-ai-border: rgba(96, 165, 250, 0.28);
+      --app-bubble-ai-text: #dbeafe;
+      --app-bubble-user-bg: rgba(20, 25, 35, 0.96);
+      --app-bubble-user-border: rgba(110, 125, 148, 0.24);
+      --app-bubble-user-text: #f5f7fb;
+      --app-bubble-supervisor-bg: rgba(147, 51, 234, 0.24);
+      --app-bubble-supervisor-border: rgba(192, 132, 252, 0.28);
+      --app-bubble-supervisor-text: #f3e8ff;
+      --app-system-text: #9ca9bc;
       --app-ring: rgba(96, 165, 250, 0.38);
       --app-shadow: 0 22px 55px rgba(0, 0, 0, 0.28);
     }

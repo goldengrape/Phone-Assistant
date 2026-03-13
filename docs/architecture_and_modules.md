@@ -40,7 +40,7 @@ Responsibilities:
 - render the supervisor console
 - manage connect / disconnect flow
 - manage collapsible settings and prompt area
-- display voice input / output state
+- display compact voice input / output level state
 - show transcript and system events
 - submit whisper commands
 - export conversation logs
@@ -50,6 +50,9 @@ Current UI characteristics:
 - responsive layout for desktop and narrow viewports
 - adaptive light / dark theme using CSS variables and system color preference
 - localized UI labels and status text
+- split configuration for interface language vs AI spoken language
+- bottom-sticky whisper command bar for rapid operator intervention
+- collapsible session-context diagnostics for Gemini
 
 ### 3.2 Global State
 
@@ -60,6 +63,7 @@ Responsibilities:
 - selected model: `Gemini | Qwen`
 - target language
 - UI language
+- Gemini voice preset
 - editable call purpose / system instruction
 - persisted API keys
 - connection status
@@ -70,6 +74,7 @@ Persistence behavior:
 - API keys are stored in browser local storage
 - `callPurpose` is stored in browser local storage
 - `uiLanguage` is stored in browser local storage
+- `geminiVoice` is stored in browser local storage
 
 ### 3.3 Internationalization
 
@@ -101,6 +106,11 @@ Current target output language options:
 - French
 - Spanish
 
+The app intentionally distinguishes:
+
+- interface language for the supervisor UI
+- AI spoken language constraint for the active conversation
+
 ### 3.4 Audio Input
 
 Primary file: `src/audio/AudioCapture.ts`
@@ -114,6 +124,8 @@ Responsibilities:
 - emit PCM chunks to the active AI client
 
 This module is also responsible for providing enough audio activity information for the input monitoring card in the UI.
+
+In the current UI, transcript text is not duplicated inside the compact voice card. Recognized text is tracked in the main transcript area instead.
 
 ### 3.5 Audio Output
 
@@ -168,7 +180,7 @@ Current Gemini configuration:
 - model: `models/gemini-2.5-flash-native-audio-preview-12-2025`
 - response modality: audio
 - media resolution: medium
-- voice: `Zephyr`
+- voice: configurable from the UI, defaulting to `Zephyr`
 - input audio transcription: enabled
 - output audio transcription: enabled
 - context window compression: enabled
@@ -200,6 +212,7 @@ Responsibilities:
 - define theme tokens with CSS variables
 - support system light / dark preference
 - style the responsive shell, panels, inputs, cards, and footer controls
+- support sticky bottom action bar behavior for whisper commands
 
 ## 4. Current Design Principles
 

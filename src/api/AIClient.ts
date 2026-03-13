@@ -5,6 +5,7 @@ export interface AIClientOptions {
   onStateChange: (state: 'disconnected' | 'connecting' | 'connected' | 'error') => void;
   callPurpose?: string;
   targetLanguage?: string;
+  voiceName?: string;
   apiKey?: string;
 }
 

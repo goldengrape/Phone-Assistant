@@ -22,10 +22,11 @@ The supervisor needs to:
 - choose a provider
 - provide API credentials
 - define call purpose / system instructions
-- choose target output language
-- optionally choose UI language
+- choose AI spoken language
+- choose interface language independently from AI spoken language
+- choose a Gemini voice preset when using Gemini
 - start and stop the live session
-- monitor voice input and voice output
+- monitor voice input and voice output levels
 - read conversation transcript
 - send silent steering instructions
 - export the log after the session
@@ -41,18 +42,24 @@ The supervisor needs to:
 - `FR-07`: The system must surface recognized user speech and recognized assistant speech in the UI.
 - `FR-08`: The system must maintain a transcript timeline with user, assistant, supervisor, and system messages.
 - `FR-09`: The system must allow the supervisor to send silent whisper commands during the active session.
+- `FR-09a`: The whisper command input should remain quickly accessible during transcript review and active supervision.
 - `FR-10`: The system must allow transcript export.
 - `FR-11`: The UI must remain usable on both desktop-width and narrower screens.
 - `FR-12`: The UI must adapt to system light / dark preference.
 - `FR-13`: The UI must support at least Chinese, Japanese, Korean, English, French, and Spanish.
+- `FR-14`: The settings area must clearly distinguish interface language from AI spoken language.
+- `FR-15`: The system must allow Gemini voice selection from supported prebuilt voices.
+- `FR-16`: Advanced session-context diagnostics should not dominate the default supervision workflow and should remain hidden or collapsible by default.
 
 ## 4. Non-Functional Requirements
 
 - `NFR-01`: Session startup must be simple enough for a non-developer operator.
 - `NFR-02`: Provider-specific complexity should be hidden behind a stable UI.
 - `NFR-03`: Monitoring signals should be clear enough that the supervisor can tell whether audio is entering and leaving the system.
+- `NFR-03a`: Monitoring panels should avoid repeating transcript content when the same information is already shown in the main transcript area.
 - `NFR-04`: The system should minimize unnecessary infrastructure and avoid requiring a dedicated backend for the core local experience.
 - `NFR-05`: The app should tolerate different model output sample rates during playback.
+- `NFR-06`: Core interaction controls, especially whisper intervention, should remain reachable with minimal scrolling.
 
 ## 5. Current Scope Boundary
 
