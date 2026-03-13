@@ -1,23 +1,41 @@
 export class AudioPlayback {
   private audioContext: AudioContext | null = null;
+  private gainNode: GainNode | null = null;
   private sampleRate: number;
   private nextStartTime: number = 0;
+  private activeSources = new Set<AudioBufferSourceNode>();
 
   constructor(sampleRate: number = 24000) {
     this.sampleRate = sampleRate; // Gemini default 24kHz, Qwen default 16/24kHz
   }
 
-  init() {
+  async init() {
     if (!this.audioContext) {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
+      const AudioContextCtor = window.AudioContext
+        || (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextCtor) {
+        throw new Error('Web Audio API is not supported in this browser.');
+      }
+
+      this.audioContext = new AudioContextCtor({
         sampleRate: this.sampleRate,
       });
-      this.nextStartTime = this.audioContext.currentTime;
+      this.gainNode = this.audioContext.createGain();
+      this.gainNode.gain.value = 1;
+      this.gainNode.connect(this.audioContext.destination);
     }
+    await this.ensureReady();
+    this.nextStartTime = this.audioContext.currentTime;
   }
 
-  playChunk(pcm16Data: Int16Array) {
-    if (!this.audioContext) return;
+  async playChunk(pcm16Data: Int16Array) {
+    if (!pcm16Data.length) return;
+    if (!this.audioContext) {
+      await this.init();
+    } else {
+      await this.ensureReady();
+    }
+    if (!this.audioContext || !this.gainNode) return;
 
     // Convert Int16Array to Float32Array for Web Audio API
     const float32Data = new Float32Array(pcm16Data.length);
@@ -30,7 +48,11 @@ export class AudioPlayback {
 
     const source = this.audioContext.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(this.audioContext.destination);
+    source.connect(this.gainNode);
+    source.onended = () => {
+      this.activeSources.delete(source);
+    };
+    this.activeSources.add(source);
 
     // Schedule playback seamlessly to avoid clicks
     const currentTime = this.audioContext.currentTime;
@@ -42,7 +64,25 @@ export class AudioPlayback {
     this.nextStartTime += audioBuffer.duration;
   }
 
+  private async ensureReady() {
+    if (this.audioContext && this.audioContext.state !== 'running') {
+      await this.audioContext.resume();
+    }
+  }
+
   stop() {
+    this.activeSources.forEach((source) => {
+      try {
+        source.stop();
+      } catch {
+        // Ignore sources that have already finished.
+      }
+    });
+    this.activeSources.clear();
+    if (this.gainNode) {
+      this.gainNode.disconnect();
+      this.gainNode = null;
+    }
     if (this.audioContext) {
       this.audioContext.close();
       this.audioContext = null;

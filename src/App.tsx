@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
 import { 
   Play, Square, Download, Send, Mic, MessageSquare, 
-  Settings, ChevronDown, ChevronUp, CheckCircle2, XCircle, Loader2 
+  Settings, ChevronDown, ChevronUp, CheckCircle2, XCircle, Loader2, Volume2
 } from 'lucide-react';
 import { useAppStore } from './store/useAppStore';
 import { AudioCapture } from './audio/AudioCapture';
 import { AudioPlayback } from './audio/AudioPlayback';
 import { GeminiLiveClient } from './api/GeminiLiveClient';
 import { QwenLiveClient } from './api/QwenLiveClient';
-import { AIClient } from './api/AIClient';
+import { AIClient, AIClientOptions } from './api/AIClient';
 import { cn } from './lib/utils';
+
+const OUTPUT_ACTIVITY_RESET_MS = 250;
+
+function getPcmLevel(samples: Int16Array): number {
+  if (!samples.length) return 0;
+
+  let sumSquares = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const normalized = samples[i] / 32768;
+    sumSquares += normalized * normalized;
+  }
+
+  return Math.min(1, Math.sqrt(sumSquares / samples.length) * 6);
+}
 
 export default function App() {
   const {
@@ -27,11 +41,20 @@ export default function App() {
   const [showPrompt, setShowPrompt] = useState(true);
   const [testingKey, setTestingKey] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
+  const [micLevel, setMicLevel] = useState(0);
+  const [speakerLevel, setSpeakerLevel] = useState(0);
+  const [micState, setMicState] = useState<'idle' | 'monitoring' | 'speaking'>('idle');
+  const [speakerState, setSpeakerState] = useState<'idle' | 'waiting' | 'playing'>('idle');
+  const [inputConfirmed, setInputConfirmed] = useState(false);
+  const [outputConfirmed, setOutputConfirmed] = useState(false);
 
   const clientRef = useRef<AIClient | null>(null);
   const captureRef = useRef<AudioCapture | null>(null);
   const playbackRef = useRef<AudioPlayback | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const speakerResetTimerRef = useRef<number | null>(null);
+  const inputObservedRef = useRef(false);
+  const outputObservedRef = useRef(false);
 
   // Auto-scroll messages
   useEffect(() => {
@@ -39,6 +62,14 @@ export default function App() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      if (speakerResetTimerRef.current !== null) {
+        window.clearTimeout(speakerResetTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleStart = async () => {
     if (status !== 'disconnected') return;
@@ -51,13 +82,35 @@ export default function App() {
     }
 
     clearMessages();
+    inputObservedRef.current = false;
+    outputObservedRef.current = false;
+    setMicLevel(0);
+    setSpeakerLevel(0);
+    setMicState('monitoring');
+    setSpeakerState('waiting');
+    setInputConfirmed(false);
+    setOutputConfirmed(false);
+    if (speakerResetTimerRef.current !== null) {
+      window.clearTimeout(speakerResetTimerRef.current);
+      speakerResetTimerRef.current = null;
+    }
     addMessage({ role: 'System', text: 'Initializing audio devices...' });
 
     try {
       playbackRef.current = new AudioPlayback(24000);
-      playbackRef.current.init();
+      await playbackRef.current.init();
 
       captureRef.current = new AudioCapture();
+      captureRef.current.onLevelChange = (level, isSpeechDetected) => {
+        setMicLevel(level);
+        setMicState(isSpeechDetected ? 'speaking' : 'monitoring');
+
+        if (isSpeechDetected && !inputObservedRef.current) {
+          inputObservedRef.current = true;
+          setInputConfirmed(true);
+          addMessage({ role: 'System', text: 'Detected live microphone input.' });
+        }
+      };
       captureRef.current.onAudioData = (pcm16) => {
         if (clientRef.current) {
           clientRef.current.sendAudio(pcm16);
@@ -71,8 +124,26 @@ export default function App() {
         targetLanguage: language,
         apiKey: apiKey,
         onAudioData: (pcm16: Int16Array) => {
+          const level = getPcmLevel(pcm16);
+          setSpeakerLevel(level);
+          setSpeakerState('playing');
+
+          if (speakerResetTimerRef.current !== null) {
+            window.clearTimeout(speakerResetTimerRef.current);
+          }
+          speakerResetTimerRef.current = window.setTimeout(() => {
+            setSpeakerLevel(0);
+            setSpeakerState('waiting');
+          }, OUTPUT_ACTIVITY_RESET_MS);
+
+          if (level > 0.01 && !outputObservedRef.current) {
+            outputObservedRef.current = true;
+            setOutputConfirmed(true);
+            addMessage({ role: 'System', text: 'Received AI audio and started speaker playback.' });
+          }
+
           if (playbackRef.current) {
-            playbackRef.current.playChunk(pcm16);
+            void playbackRef.current.playChunk(pcm16);
           }
         },
         onTranscript: (role: string, text: string) => {
@@ -82,6 +153,8 @@ export default function App() {
           setStatus(newState);
           if (newState === 'connected') {
             addMessage({ role: 'System', text: `Connected to ${model} Realtime API.` });
+            setMicState('monitoring');
+            setSpeakerState('waiting');
           } else if (newState === 'error') {
             addMessage({ role: 'System', text: 'Connection Error. Please check your API key and network.' });
             handleStop();
@@ -105,11 +178,18 @@ export default function App() {
   };
 
   const handleStop = () => {
+    if (speakerResetTimerRef.current !== null) {
+      window.clearTimeout(speakerResetTimerRef.current);
+      speakerResetTimerRef.current = null;
+    }
+    inputObservedRef.current = false;
+    outputObservedRef.current = false;
     if (clientRef.current) {
       clientRef.current.disconnect();
       clientRef.current = null;
     }
     if (captureRef.current) {
+      captureRef.current.onLevelChange = null;
       captureRef.current.stop();
       captureRef.current = null;
     }
@@ -117,6 +197,12 @@ export default function App() {
       playbackRef.current.stop();
       playbackRef.current = null;
     }
+    setMicLevel(0);
+    setSpeakerLevel(0);
+    setMicState('idle');
+    setSpeakerState('idle');
+    setInputConfirmed(false);
+    setOutputConfirmed(false);
     setStatus('disconnected');
     addMessage({ role: 'System', text: 'Call ended.' });
   };
@@ -129,23 +215,26 @@ export default function App() {
     setTestResult(null);
 
     try {
-      const options = {
+      let testClient: AIClient | null = null;
+      const options: AIClientOptions = {
         onAudioData: () => {},
         onTranscript: () => {},
-        onStateChange: (state: any) => {
+        onStateChange: (state) => {
           if (state === 'connected') {
             setTestResult('success');
+            setTestingKey(false);
             setTimeout(() => {
               if (testClient) testClient.disconnect();
             }, 500);
           } else if (state === 'error') {
             setTestResult('error');
+            setTestingKey(false);
           }
         },
         apiKey: apiKey
       };
 
-      const testClient = model === 'Gemini' 
+      testClient = model === 'Gemini' 
         ? new GeminiLiveClient(options) 
         : new QwenLiveClient(options);
       
@@ -156,17 +245,11 @@ export default function App() {
         setTestingKey(false);
       }, 5000);
 
-    } catch (err) {
+    } catch {
       setTestResult('error');
       setTestingKey(false);
     }
   };
-
-  useEffect(() => {
-    if (testResult) {
-      setTestingKey(false);
-    }
-  }, [testResult]);
 
   const handleSendWhisper = (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,7 +351,11 @@ export default function App() {
                       className="w-full bg-neutral-800 border border-neutral-700 rounded pl-3 pr-24 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
                       value={model === 'Gemini' ? geminiApiKey : qwenApiKey}
                       onChange={(e) => {
-                        model === 'Gemini' ? setGeminiApiKey(e.target.value) : setQwenApiKey(e.target.value);
+                        if (model === 'Gemini') {
+                          setGeminiApiKey(e.target.value);
+                        } else {
+                          setQwenApiKey(e.target.value);
+                        }
                         setTestResult(null);
                       }}
                     />
@@ -322,6 +409,93 @@ export default function App() {
               </div>
             </div>
           )}
+        </section>
+
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4 shadow-lg">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center border",
+                  micState === 'speaking'
+                    ? "bg-green-500/10 border-green-500/30 text-green-400"
+                    : "bg-neutral-900 border-neutral-800 text-neutral-400"
+                )}>
+                  <Mic size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-200">Voice Input</p>
+                  <p className="text-xs text-neutral-500">
+                    {status === 'disconnected'
+                      ? 'Microphone idle'
+                      : micState === 'speaking'
+                        ? 'Speech detected and streaming'
+                        : inputConfirmed
+                          ? 'Mic active, waiting for next speech'
+                          : 'Mic active, waiting for speech'}
+                  </p>
+                </div>
+              </div>
+              <span className={cn(
+                "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                inputConfirmed
+                  ? "bg-green-500/10 border-green-500/30 text-green-300"
+                  : "bg-neutral-900 border-neutral-800 text-neutral-500"
+              )}>
+                {inputConfirmed ? 'Confirmed' : 'No Signal Yet'}
+              </span>
+            </div>
+            <div className="mt-4 h-2 bg-neutral-900 rounded-full overflow-hidden border border-neutral-800">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-[width] duration-150",
+                  micState === 'speaking' ? "bg-green-400" : "bg-blue-500"
+                )}
+                style={{ width: `${Math.round(micLevel * 100)}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4 shadow-lg">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center border",
+                  speakerState === 'playing'
+                    ? "bg-blue-500/10 border-blue-500/30 text-blue-300"
+                    : "bg-neutral-900 border-neutral-800 text-neutral-400"
+                )}>
+                  <Volume2 size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-neutral-200">Voice Output</p>
+                  <p className="text-xs text-neutral-500">
+                    {status === 'disconnected'
+                      ? 'Speaker idle'
+                      : speakerState === 'playing'
+                        ? 'Playing AI audio'
+                        : outputConfirmed
+                          ? 'Playback ready for next response'
+                          : 'Waiting for AI audio'}
+                  </p>
+                </div>
+              </div>
+              <span className={cn(
+                "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                outputConfirmed
+                  ? "bg-blue-500/10 border-blue-500/30 text-blue-200"
+                  : "bg-neutral-900 border-neutral-800 text-neutral-500"
+              )}>
+                {outputConfirmed ? 'Playing' : 'Waiting'}
+              </span>
+            </div>
+            <div className="mt-4 h-2 bg-neutral-900 rounded-full overflow-hidden border border-neutral-800">
+              <div
+                className="h-full rounded-full bg-blue-400 transition-[width] duration-150"
+                style={{ width: `${Math.round(speakerLevel * 100)}%` }}
+              />
+            </div>
+          </div>
         </section>
 
         {/* Transcript Area */}

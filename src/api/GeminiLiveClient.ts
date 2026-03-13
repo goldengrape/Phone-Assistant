@@ -5,6 +5,8 @@ export class GeminiLiveClient extends AIClient {
   private model = "gemini-2.5-flash-native-audio-preview-12-2025";
   private apiKey = "";
   private url = "";
+  private lastInputTranscript = "";
+  private lastOutputTranscript = "";
 
   constructor(options: AIClientOptions) {
     super(options);
@@ -68,6 +70,8 @@ export class GeminiLiveClient extends AIClient {
         generationConfig: {
           responseModalities: ["AUDIO"]
         },
+        inputAudioTranscription: {},
+        outputAudioTranscription: {},
         systemInstruction: {
           parts: [{ text: instructions }]
         }
@@ -80,14 +84,11 @@ export class GeminiLiveClient extends AIClient {
     if (this.ws?.readyState === WebSocket.OPEN) {
       const b64 = int16ToBase64(pcm16);
       const msg = {
-        clientContent: {
-          turns: [
-            {
-              role: "user",
-              parts: [{ inlineData: { mimeType: "audio/pcm;rate=16000", data: b64 } }]
-            }
-          ],
-          turnComplete: false
+        realtimeInput: {
+          audio: {
+            mimeType: "audio/pcm;rate=16000",
+            data: b64
+          }
         }
       };
       this.ws.send(JSON.stringify(msg));
@@ -115,8 +116,18 @@ export class GeminiLiveClient extends AIClient {
     if (typeof event.data === 'string') {
       try {
         const response = JSON.parse(event.data);
-        if (response.serverContent?.modelTurn?.parts) {
-          const parts = response.serverContent.modelTurn.parts;
+        const serverContent = response.serverContent;
+
+        if (serverContent?.inputTranscription?.finished && serverContent.inputTranscription.text) {
+          this.emitTranscript('User', serverContent.inputTranscription.text, 'input');
+        }
+
+        if (serverContent?.outputTranscription?.finished && serverContent.outputTranscription.text) {
+          this.emitTranscript('AI', serverContent.outputTranscription.text, 'output');
+        }
+
+        if (serverContent?.modelTurn?.parts) {
+          const parts = serverContent.modelTurn.parts;
           for (const part of parts) {
             // Check for Audio Output
             if (part.inlineData && part.inlineData.data) {
@@ -124,7 +135,7 @@ export class GeminiLiveClient extends AIClient {
               this.options.onAudioData(pcm16);
             }
             // Check for Text Transcript
-            if (part.text) {
+            if (part.text && !serverContent.outputTranscription?.text) {
               this.options.onTranscript('AI', part.text);
             }
           }
@@ -135,5 +146,20 @@ export class GeminiLiveClient extends AIClient {
     } else {
       // Sometimes it sends raw bytes directly based on SDK, but typically it is JSON with base64 audio
     }
+  }
+
+  private emitTranscript(role: 'AI' | 'User', text: string, type: 'input' | 'output') {
+    const normalizedText = text.trim();
+    if (!normalizedText) return;
+
+    if (type === 'input') {
+      if (normalizedText === this.lastInputTranscript) return;
+      this.lastInputTranscript = normalizedText;
+    } else {
+      if (normalizedText === this.lastOutputTranscript) return;
+      this.lastOutputTranscript = normalizedText;
+    }
+
+    this.options.onTranscript(role, normalizedText);
   }
 }
