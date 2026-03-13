@@ -1,51 +1,147 @@
-# AI Phone Assistant (Web & Desktop)
+# AI Phone Assistant
 
-基于 **Google Gemini Multimodal Live API** 和 **Alibaba Qwen Realtime API** 的智能电话助手前端应用。它作为“监督者”界面，帮助用户通过实时语音（直连大模型）与外部人员沟通，并支持中途静默发送文字指令来干预 AI 对话走向。
+AI Phone Assistant is a realtime voice-call supervisor app built with `Vite + React + TypeScript`.
+It connects the browser directly to:
 
-## 架构概览 (纯前端 React 方案)
+- Google Gemini Live API through the official `@google/genai` SDK
+- Alibaba Qwen Realtime API through a browser WebSocket client
 
-本应用已全面重构为纯前端架构（Vite + React + TypeScript），通过浏览器的 **Web Audio API** 捕获麦克风输入并转换为模型所需的 16kHz PCM，再通过原生 **WebSocket** 直接连接大模型 API。
+The app captures microphone audio with the Web Audio API, streams PCM audio to the selected model, plays model audio replies in real time, shows transcript previews, and allows the supervisor to inject silent text instructions during the call.
 
-*未来规划：本项目将使用 Tauri 封装为极简的跨平台单机软件。*
+## Current Status
 
+This repository is currently a frontend-first implementation.
+
+- Runtime: browser
+- UI: responsive layout, adaptive light/dark theme
+- State: Zustand
+- Models: Gemini and Qwen
+- Input audio: 16 kHz PCM
+- Output audio: streamed PCM playback with dynamic sample-rate handling
+- UI languages: English, Chinese, Japanese, Korean, French, Spanish, plus follow-system mode
+- Target output languages: Auto, English, Chinese, Japanese, Korean, French, Spanish
+
+## Key Features
+
+- Realtime voice input and output
+- Supervisor whisper commands that do not get spoken aloud
+- Live transcript area with user, assistant, supervisor, and system messages
+- Voice input and voice output monitoring cards
+- API key local persistence in browser storage
+- Editable system instructions / call purpose
+- Exportable session log
+- Responsive UI for desktop and narrow screens
+- Adaptive visual theme based on system color scheme
+
+## Architecture Summary
+
+```text
+Microphone
+  -> AudioCapture (Web Audio API, PCM16 @ 16 kHz)
+  -> AI client adapter
+     -> GeminiLiveClient (@google/genai live session)
+     -> QwenLiveClient (browser WebSocket)
+  -> streamed model audio
+  -> AudioPlayback (Web Audio API scheduling)
+  -> speaker
+
+UI (React)
+  <-> Zustand store
+  <-> AI client lifecycle
+  <-> transcript / whisper / settings
 ```
-[ iPhone/外部来电 ] <---> [ Mac/PC (免提外放) ]
-                               |
-                     [ 浏览器 Web Audio API ]
-                               |
-             [ React GUI (Supervisor Interface) ]
-                               |
-                        [ WebSocket ]
-                               |
-        [ Gemini 2.5 Flash Native Audio / Qwen Omni Realtime ]
-```
 
-## 功能特性
+## Important Implementation Notes
 
-- **纯前端架构**：无需 Python 后端环境，直接在浏览器中进行实时重采样（Resampling）和音频流媒体交互。
-- **双引擎支持**：内置对接 **Gemini 2.5 Flash Native Audio** 和 **通义千问 Qwen3 Omni Realtime**。
-- **Whisper 干预系统**：监督者可在通话中静默发送文字指令，即时改变 AI 对答方向。
-- **实时转录与导出**：双向通话记录实时展示，支持挂断后一键导出文本。
-- **响应式 UI 设计**：基于 Tailwind CSS + shadcn/ui，支持桌面端与移动端完美适配，深色模式。
+### Gemini
 
-## 前置条件 & 配置
+- Uses the official `@google/genai` live session API
+- Current model:
+  `models/gemini-2.5-flash-native-audio-preview-12-2025`
+- Requests audio output modality
+- Enables input and output audio transcription
+- Default voice: `Zephyr`
 
-1. **Node.js** 环境 (推荐 v18+)。
-2. 在项目根目录创建 `.env.local`：
+### Qwen
 
-```env
-VITE_GEMINI_API_KEY=your_google_gemini_api_key
-VITE_DASHSCOPE_API_KEY=your_aliyun_qwen_api_key
-```
+- Uses a browser WebSocket connection to DashScope realtime endpoint
+- Sends audio with `input_audio_buffer.append`
+- Sends supervisor text with `conversation.item.create`
 
-## 安装与启动
+## Local Development
+
+### Requirements
+
+- Node.js 18+
+- A Gemini API key and/or DashScope API key
+
+### Install
 
 ```bash
-# 安装依赖
 npm install
+```
 
-# 启动本地开发服务器
+### Run
+
+```bash
 npm run dev
 ```
 
-打开 `http://localhost:5173` 开始使用。
+Open the local Vite URL shown in the terminal.
+
+### Build
+
+```bash
+npm run build
+```
+
+### Lint
+
+```bash
+npm run lint
+```
+
+## Configuration
+
+API keys are currently stored in browser local storage through the UI.
+
+Optional environment variables are also supported by the clients:
+
+```env
+VITE_GEMINI_API_KEY=your_gemini_api_key
+VITE_DASHSCOPE_API_KEY=your_qwen_api_key
+```
+
+## Main Source Layout
+
+```text
+src/
+  api/
+    AIClient.ts
+    GeminiLiveClient.ts
+    QwenLiveClient.ts
+  audio/
+    AudioCapture.ts
+    AudioPlayback.ts
+  store/
+    useAppStore.ts
+  i18n.ts
+  App.tsx
+  index.css
+```
+
+## Documentation
+
+- `docs/architecture_and_modules.md`: current architecture and module responsibilities
+- `docs/audio_and_websocket_flow.md`: audio, transcript, and realtime transport flow
+- `docs/user_requirements.md`: current product-level requirements
+- `docs/ADD.md`: current design rationale from an axiomatic-design perspective
+- `docs/MDD.md`: current module design document
+- `docs/algorithm_description.md`: implementation-level processing description
+- `docs/skill_evaluation_report.md`: evaluation of whether this product should add AI skills
+
+## Known Constraints
+
+- Gemini official SDK adds noticeable frontend bundle weight compared with a raw protocol implementation
+- Qwen browser authentication is still constrained by the provider's WebSocket auth model
+- Actual voice quality and transcription accuracy depend on browser audio permissions, device routing, and model-side realtime behavior

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { UiLanguage } from '../i18n';
 
 interface Message {
   id: string;
@@ -12,6 +13,8 @@ interface AppState {
   setModel: (m: 'Gemini' | 'Qwen') => void;
   language: string;
   setLanguage: (l: string) => void;
+  uiLanguage: UiLanguage;
+  setUiLanguage: (language: UiLanguage) => void;
   callPurpose: string;
   setCallPurpose: (cp: string) => void;
 
@@ -35,6 +38,11 @@ export const useAppStore = create<AppState>((set) => ({
   setModel: (m) => set({ model: m }),
   language: 'Auto',
   setLanguage: (l) => set({ language: l }),
+  uiLanguage: (localStorage.getItem('ui_language') as UiLanguage | null) || 'auto',
+  setUiLanguage: (uiLanguage) => {
+    localStorage.setItem('ui_language', uiLanguage);
+    set({ uiLanguage });
+  },
   callPurpose: localStorage.getItem('call_purpose') || DEFAULT_CALL_PURPOSE,
   setCallPurpose: (callPurpose) => {
     localStorage.setItem('call_purpose', callPurpose);

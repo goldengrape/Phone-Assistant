@@ -9,6 +9,7 @@ import { AudioPlayback } from './audio/AudioPlayback';
 import { GeminiLiveClient } from './api/GeminiLiveClient';
 import { QwenLiveClient } from './api/QwenLiveClient';
 import { AIClient, AIClientOptions } from './api/AIClient';
+import { resolveLocale, targetLanguageOptions, translations, uiLanguageOptions } from './i18n';
 import { cn } from './lib/utils';
 
 const OUTPUT_ACTIVITY_RESET_MS = 250;
@@ -29,12 +30,27 @@ export default function App() {
   const {
     model, setModel,
     language, setLanguage,
+    uiLanguage, setUiLanguage,
     callPurpose, setCallPurpose,
     geminiApiKey, setGeminiApiKey,
     qwenApiKey, setQwenApiKey,
     status, setStatus,
     messages, addMessage, clearMessages
   } = useAppStore();
+
+  const locale = resolveLocale(uiLanguage, typeof navigator !== 'undefined' ? navigator.language : 'en');
+  const text = translations[locale];
+  const modelLabel = model === 'Gemini' ? text.misc.modelGemini : text.misc.modelQwen;
+  const surfaceClass = 'border border-[color:var(--app-border)] bg-[var(--app-surface)] shadow-[var(--app-shadow)] backdrop-blur-xl';
+  const surfaceStrongClass = 'border border-[color:var(--app-border)] bg-[var(--app-surface-strong)] shadow-[var(--app-shadow)] backdrop-blur-xl';
+  const fieldClass = 'border border-[color:var(--app-input-border)] bg-[var(--app-input)] text-[var(--app-text)] shadow-inner placeholder:text-[var(--app-text-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--app-ring)]';
+
+  const getRoleLabel = (role: 'AI' | 'User' | 'Supervisor' | 'System') => {
+    if (role === 'AI') return text.misc.roleAI;
+    if (role === 'User') return text.misc.roleUser;
+    if (role === 'Supervisor') return text.misc.roleSupervisor;
+    return text.misc.roleSystem;
+  };
 
   const [whisperText, setWhisperText] = useState('');
   const [showSettings, setShowSettings] = useState(false);
@@ -78,7 +94,7 @@ export default function App() {
 
     const apiKey = model === 'Gemini' ? geminiApiKey : qwenApiKey;
     if (!apiKey) {
-      addMessage({ role: 'System', text: `Please set the API key for ${model} in settings first.` });
+      addMessage({ role: 'System', text: text.system.setApiKeyFirst(modelLabel) });
       setShowSettings(true);
       return;
     }
@@ -98,7 +114,7 @@ export default function App() {
       window.clearTimeout(speakerResetTimerRef.current);
       speakerResetTimerRef.current = null;
     }
-    addMessage({ role: 'System', text: 'Initializing audio devices...' });
+    addMessage({ role: 'System', text: text.system.initializingAudioDevices });
 
     try {
       playbackRef.current = new AudioPlayback(24000);
@@ -112,7 +128,7 @@ export default function App() {
         if (isSpeechDetected && !inputObservedRef.current) {
           inputObservedRef.current = true;
           setInputConfirmed(true);
-          addMessage({ role: 'System', text: 'Detected live microphone input.' });
+          addMessage({ role: 'System', text: text.system.detectedMicInput });
         }
       };
       captureRef.current.onAudioData = (pcm16) => {
@@ -121,7 +137,7 @@ export default function App() {
         }
       };
       await captureRef.current.start();
-      addMessage({ role: 'System', text: 'Microphone started.' });
+      addMessage({ role: 'System', text: text.system.microphoneStarted });
 
       const options = {
         callPurpose,
@@ -143,7 +159,7 @@ export default function App() {
           if (level > 0.01 && !outputObservedRef.current) {
             outputObservedRef.current = true;
             setOutputConfirmed(true);
-            addMessage({ role: 'System', text: 'Received AI audio and started speaker playback.' });
+            addMessage({ role: 'System', text: text.system.receivedAiAudio });
           }
 
           if (playbackRef.current) {
@@ -168,11 +184,11 @@ export default function App() {
         onStateChange: (newState: 'disconnected' | 'connecting' | 'connected' | 'error') => {
           setStatus(newState);
           if (newState === 'connected') {
-            addMessage({ role: 'System', text: `Connected to ${model} Realtime API.` });
+            addMessage({ role: 'System', text: text.system.connectedRealtimeApi(modelLabel) });
             setMicState('monitoring');
             setSpeakerState('waiting');
           } else if (newState === 'error') {
-            addMessage({ role: 'System', text: 'Connection Error. Please check your API key and network.' });
+            addMessage({ role: 'System', text: text.system.connectionError });
             handleStop();
           }
         }
@@ -188,7 +204,7 @@ export default function App() {
 
     } catch (err) {
       console.error(err);
-      addMessage({ role: 'System', text: `Error: ${(err as Error).message}` });
+      addMessage({ role: 'System', text: `${text.system.errorPrefix}: ${(err as Error).message}` });
       setStatus('disconnected');
     }
   };
@@ -222,7 +238,7 @@ export default function App() {
     setLatestUserTranscript('');
     setLatestAiTranscript('');
     setStatus('disconnected');
-    addMessage({ role: 'System', text: 'Call ended.' });
+    addMessage({ role: 'System', text: text.system.callEnded });
   };
 
   const testApiKey = async () => {
@@ -278,7 +294,7 @@ export default function App() {
       addMessage({ role: 'Supervisor', text: whisperText });
       setWhisperText('');
     } else {
-      addMessage({ role: 'System', text: 'Cannot whisper: Not connected.' });
+      addMessage({ role: 'System', text: text.system.cannotWhisper });
     }
   };
 
@@ -294,42 +310,50 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-neutral-900 text-neutral-100 font-sans">
+    <div className="flex min-h-dvh flex-col bg-[var(--app-bg)] text-[var(--app-text)] font-sans">
       {/* Header */}
-      <header className="p-4 bg-neutral-950 border-b border-neutral-800 shrink-0 shadow-md z-20">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
+      <header className="sticky top-0 z-20 shrink-0 border-b border-[color:var(--app-border)] bg-[var(--app-surface-strong)]/90 px-4 py-4 shadow-[var(--app-shadow)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 items-center gap-3">
             <Mic className="text-blue-500" size={24} />
-            <h1 className="text-xl font-bold tracking-tight hidden sm:block">AI Phone Assistant <span className="text-xs font-normal text-neutral-500 ml-1">v1.1.0</span></h1>
+            <h1 className="min-w-0 text-lg font-bold tracking-tight sm:text-xl">
+              {text.misc.appTitle}
+              <span className="ml-2 text-xs font-normal text-[var(--app-text-soft)]">v1.1.0</span>
+            </h1>
             <span className={cn(
-              "px-2 py-0.5 text-[10px] font-bold rounded-full uppercase tracking-wider ml-2",
+              "ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider sm:ml-2",
               status === 'connected' ? "bg-green-500/20 text-green-400 border border-green-500/30" :
               status === 'connecting' ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30" :
               "bg-red-500/20 text-red-400 border border-red-500/30"
             )}>
-              {status}
+              {text.status[status]}
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex w-full items-center gap-3 sm:w-auto">
             <select
               disabled={status !== 'disconnected'}
-              className="bg-neutral-800 border border-neutral-700 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+              className={cn(
+                "min-w-0 flex-1 rounded-xl px-3 py-2 text-sm disabled:opacity-50 sm:w-72 sm:flex-none",
+                fieldClass
+              )}
               value={model}
               onChange={(e) => {
                 setModel(e.target.value as 'Gemini' | 'Qwen');
                 setTestResult(null);
               }}
             >
-              <option value="Gemini">Gemini 2.5 Flash Native</option>
-              <option value="Qwen">Qwen Omni</option>
+              <option value="Gemini">{text.misc.modelGemini}</option>
+              <option value="Qwen">{text.misc.modelQwen}</option>
             </select>
 
             <button 
               onClick={() => setShowSettings(!showSettings)}
               className={cn(
-                "p-2 rounded-lg transition-colors",
-                showSettings ? "bg-blue-600 text-white" : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+                "rounded-xl border border-[color:var(--app-input-border)] p-2.5 transition-colors",
+                showSettings
+                  ? "bg-blue-600 text-white"
+                  : "bg-[var(--app-input)] text-[var(--app-text-soft)] hover:bg-[color:var(--app-surface-muted)]"
               )}
             >
               <Settings size={20} />
@@ -339,34 +363,55 @@ export default function App() {
 
         {/* Collapsible Settings Panel */}
         {showSettings && (
-          <div className="max-w-6xl mx-auto mt-4 p-4 bg-neutral-900 border border-neutral-800 rounded-lg shadow-xl animate-in slide-in-from-top-2 duration-200">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className={cn(
+            "mx-auto mt-4 max-w-6xl rounded-2xl p-4 animate-in slide-in-from-top-2 duration-200",
+            surfaceClass
+          )}>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">Model Configuration</h3>
+                <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{text.settings.modelConfiguration}</h3>
                 <div className="space-y-2">
-                  <label className="text-xs text-neutral-500">Target Language</label>
+                  <label className="text-xs text-[var(--app-text-soft)]">{text.settings.targetLanguage}</label>
                   <select
                     disabled={status !== 'disconnected'}
-                    className="w-full bg-neutral-800 border border-neutral-700 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
                     value={language}
                     onChange={(e) => setLanguage(e.target.value)}
                   >
-                    <option value="Auto">Auto-detect Lang</option>
-                    <option value="English">English</option>
-                    <option value="Chinese">Chinese</option>
-                    <option value="Japanese">Japanese</option>
+                    {targetLanguageOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {text.languageLabels[option]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-[var(--app-text-soft)]">{text.settings.interfaceLanguage}</label>
+                  <select
+                    className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
+                    value={uiLanguage}
+                    onChange={(e) => setUiLanguage(e.target.value as (typeof uiLanguageOptions)[number])}
+                  >
+                    {uiLanguageOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {text.uiLanguageLabels[option]}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-neutral-400 uppercase tracking-wider">API Keys</h3>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{text.settings.apiKeys}</h3>
+                  <p className="text-[11px] text-[var(--app-text-soft)]">{text.settings.keysStoredLocal}</p>
+                </div>
                 <div className="space-y-3">
                   <div className="relative">
                     <input
                       type="password"
-                      placeholder={`${model} API Key`}
-                      className="w-full bg-neutral-800 border border-neutral-700 rounded pl-3 pr-24 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono"
+                      placeholder={`${modelLabel} API Key`}
+                      className={cn("w-full rounded-xl py-2 pl-3 pr-24 text-sm font-mono transition-all", fieldClass)}
                       value={model === 'Gemini' ? geminiApiKey : qwenApiKey}
                       onChange={(e) => {
                         if (model === 'Gemini') {
@@ -383,13 +428,12 @@ export default function App() {
                       <button 
                         onClick={testApiKey}
                         disabled={testingKey || !(model === 'Gemini' ? geminiApiKey : qwenApiKey)}
-                        className="bg-blue-600 hover:bg-blue-500 disabled:bg-neutral-700 text-white text-[10px] font-bold px-3 py-1.5 rounded transition-colors flex items-center gap-1"
+                        className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-blue-500 disabled:bg-neutral-700"
                       >
-                        {testingKey ? <Loader2 size={12} className="animate-spin" /> : 'TEST'}
+                        {testingKey ? <Loader2 size={12} className="animate-spin" /> : text.settings.test}
                       </button>
                     </div>
                   </div>
-                  <p className="text-[10px] text-neutral-500">Keys are stored securely in your browser's local storage.</p>
                 </div>
               </div>
             </div>
@@ -398,59 +442,62 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-hidden flex flex-col max-w-6xl w-full mx-auto p-4 gap-4">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 overflow-hidden px-4 py-4 sm:py-6">
         
         {/* System Prompt (Call Purpose) Section - AI Studio Style */}
-        <section className="bg-neutral-950 border border-neutral-800 rounded-xl overflow-hidden shadow-lg transition-all duration-300">
+        <section className={cn("overflow-hidden rounded-2xl transition-all duration-300", surfaceClass)}>
           <button 
             onClick={() => setShowPrompt(!showPrompt)}
-            className="w-full flex items-center justify-between p-4 bg-neutral-900/50 hover:bg-neutral-900 transition-colors"
+            className="flex w-full items-center justify-between bg-[color:var(--app-surface-muted)] px-4 py-4 transition-colors hover:bg-[color:var(--app-input)]"
           >
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-              <h2 className="text-sm font-bold text-neutral-300">System Instructions / Call Purpose</h2>
+              <h2 className="text-sm font-bold text-[var(--app-text)]">{text.prompt.title}</h2>
             </div>
             {showPrompt ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </button>
           
           {showPrompt && (
-            <div className="p-4 border-t border-neutral-800 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="animate-in slide-in-from-top-1 fade-in border-t border-[color:var(--app-border)] p-4 duration-200">
               <textarea
                 disabled={status !== 'disconnected'}
                 value={callPurpose}
                 onChange={(e) => setCallPurpose(e.target.value)}
-                placeholder="Define the AI's role and the goal of the call..."
-                className="w-full h-32 bg-neutral-900 border border-neutral-800 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none text-neutral-300 font-mono leading-relaxed shadow-inner placeholder:text-neutral-700 focus:bg-neutral-800 transition-colors"
+                placeholder={text.prompt.placeholder}
+                className={cn(
+                  "h-32 w-full resize-none rounded-xl p-3 text-sm font-mono leading-relaxed transition-colors",
+                  fieldClass
+                )}
               />
               <div className="mt-2 flex justify-end">
-                <span className="text-[10px] text-neutral-600 uppercase tracking-tighter">Markdown supported</span>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--app-text-soft)]">{text.prompt.markdownSupported}</span>
               </div>
             </div>
           )}
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4 shadow-lg">
+          <div className={cn("rounded-2xl p-4", surfaceClass)}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center border",
+                  "flex h-10 w-10 items-center justify-center rounded-xl border",
                   micState === 'speaking'
                     ? "bg-green-500/10 border-green-500/30 text-green-400"
-                    : "bg-neutral-900 border-neutral-800 text-neutral-400"
+                    : "bg-[var(--app-surface-muted)] border-[color:var(--app-border)] text-[var(--app-text-soft)]"
                 )}>
                   <Mic size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-neutral-200">Voice Input</p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-sm font-semibold text-[var(--app-text)]">{text.voice.inputTitle}</p>
+                  <p className="text-xs text-[var(--app-text-soft)]">
                     {status === 'disconnected'
-                      ? 'Microphone idle'
+                      ? text.voice.micIdle
                       : micState === 'speaking'
-                        ? 'Speech detected and streaming'
+                        ? text.voice.speechDetected
                         : inputConfirmed
-                          ? 'Mic active, waiting for next speech'
-                          : 'Mic active, waiting for speech'}
+                          ? text.voice.micWaitingNext
+                          : text.voice.micWaitingFirst}
                   </p>
                 </div>
               </div>
@@ -458,12 +505,12 @@ export default function App() {
                 "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
                 inputConfirmed
                   ? "bg-green-500/10 border-green-500/30 text-green-300"
-                  : "bg-neutral-900 border-neutral-800 text-neutral-500"
+                  : "bg-[var(--app-surface-muted)] border-[color:var(--app-border)] text-[var(--app-text-soft)]"
               )}>
-                {inputConfirmed ? 'Confirmed' : 'No Signal Yet'}
+                {inputConfirmed ? text.voice.confirmed : text.voice.noSignalYet}
               </span>
             </div>
-            <div className="mt-4 h-2 bg-neutral-900 rounded-full overflow-hidden border border-neutral-800">
+            <div className="mt-4 h-2 overflow-hidden rounded-full border border-[color:var(--app-border)] bg-[var(--app-surface-muted)]">
               <div
                 className={cn(
                   "h-full rounded-full transition-[width] duration-150",
@@ -472,32 +519,32 @@ export default function App() {
                 style={{ width: `${Math.round(micLevel * 100)}%` }}
               />
             </div>
-            <div className="mt-3 min-h-10 rounded-lg border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-xs text-neutral-400">
-              {latestUserTranscript || 'Recognized user speech will appear here.'}
+            <div className="mt-3 min-h-10 rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] px-3 py-2 text-xs text-[var(--app-text-soft)]">
+              {latestUserTranscript || text.voice.userSpeechPlaceholder}
             </div>
           </div>
 
-          <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4 shadow-lg">
+          <div className={cn("rounded-2xl p-4", surfaceClass)}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  "w-10 h-10 rounded-xl flex items-center justify-center border",
+                  "flex h-10 w-10 items-center justify-center rounded-xl border",
                   speakerState === 'playing'
                     ? "bg-blue-500/10 border-blue-500/30 text-blue-300"
-                    : "bg-neutral-900 border-neutral-800 text-neutral-400"
+                    : "bg-[var(--app-surface-muted)] border-[color:var(--app-border)] text-[var(--app-text-soft)]"
                 )}>
                   <Volume2 size={18} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-neutral-200">Voice Output</p>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-sm font-semibold text-[var(--app-text)]">{text.voice.outputTitle}</p>
+                  <p className="text-xs text-[var(--app-text-soft)]">
                     {status === 'disconnected'
-                      ? 'Speaker idle'
+                      ? text.voice.speakerIdle
                       : speakerState === 'playing'
-                        ? 'Playing AI audio'
+                        ? text.voice.playingAudio
                         : outputConfirmed
-                          ? 'Playback ready for next response'
-                          : 'Waiting for AI audio'}
+                          ? text.voice.playbackReady
+                          : text.voice.waitingAudio}
                   </p>
                 </div>
               </div>
@@ -505,19 +552,19 @@ export default function App() {
                 "px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border",
                 outputConfirmed
                   ? "bg-blue-500/10 border-blue-500/30 text-blue-200"
-                  : "bg-neutral-900 border-neutral-800 text-neutral-500"
+                  : "bg-[var(--app-surface-muted)] border-[color:var(--app-border)] text-[var(--app-text-soft)]"
               )}>
-                {outputConfirmed ? 'Playing' : 'Waiting'}
+                {outputConfirmed ? text.voice.playing : text.voice.waiting}
               </span>
             </div>
-            <div className="mt-4 h-2 bg-neutral-900 rounded-full overflow-hidden border border-neutral-800">
+            <div className="mt-4 h-2 overflow-hidden rounded-full border border-[color:var(--app-border)] bg-[var(--app-surface-muted)]">
               <div
                 className="h-full rounded-full bg-blue-400 transition-[width] duration-150"
                 style={{ width: `${Math.round(speakerLevel * 100)}%` }}
               />
             </div>
-            <div className="mt-3 min-h-10 rounded-lg border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-xs text-neutral-400">
-              {latestAiTranscript || 'Recognized assistant speech will appear here.'}
+            <div className="mt-3 min-h-10 rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] px-3 py-2 text-xs text-[var(--app-text-soft)]">
+              {latestAiTranscript || text.voice.assistantSpeechPlaceholder}
             </div>
           </div>
         </section>
@@ -525,16 +572,19 @@ export default function App() {
         {/* Transcript Area */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto bg-neutral-950 border border-neutral-800 rounded-xl p-6 space-y-6 shadow-inner relative group"
+          className={cn(
+            "relative flex-1 space-y-6 overflow-y-auto rounded-2xl p-4 shadow-inner sm:p-6",
+            surfaceStrongClass
+          )}
         >
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-neutral-600 space-y-4">
-              <div className="w-16 h-16 bg-neutral-900 rounded-full flex items-center justify-center border border-neutral-800 group-hover:border-blue-500/50 transition-colors duration-500">
+            <div className="flex h-full flex-col items-center justify-center space-y-4 text-[var(--app-text-soft)]">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[color:var(--app-border)] bg-[var(--app-surface-muted)] transition-colors duration-500">
                 <MessageSquare size={32} className="opacity-40" />
               </div>
               <div className="text-center">
-                <p className="font-semibold text-neutral-400">Ready to start the call</p>
-                <p className="text-xs">Transcript and events will appear here in real-time.</p>
+                <p className="font-semibold text-[var(--app-text)]">{text.transcript.emptyTitle}</p>
+                <p className="text-xs">{text.transcript.emptyBody}</p>
               </div>
             </div>
           ) : (
@@ -544,15 +594,15 @@ export default function App() {
                 msg.role === 'Supervisor' ? "items-end" : "items-start"
               )}>
                 <div className={cn(
-                  "px-4 py-3 rounded-2xl max-w-[85%] text-sm md:text-base shadow-sm relative group",
+                  "relative max-w-[94%] rounded-2xl px-4 py-3 text-sm shadow-sm md:text-base sm:max-w-[85%]",
                   msg.role === 'AI' ? "bg-blue-600/10 border border-blue-500/20 text-blue-100 rounded-tl-none" :
-                  msg.role === 'User' ? "bg-neutral-800/80 border border-neutral-700 text-neutral-100 rounded-tl-none" :
+                  msg.role === 'User' ? "rounded-tl-none border border-[color:var(--app-input-border)] bg-[var(--app-input)] text-[var(--app-text)]" :
                   msg.role === 'Supervisor' ? "bg-purple-600/20 border border-purple-500/30 text-purple-100 rounded-tr-none" :
-                  "bg-transparent border-none text-neutral-500 text-[10px] text-center mx-auto py-1 italic"
+                  "mx-auto border-none bg-transparent py-1 text-center text-[10px] italic text-[var(--app-text-soft)]"
                 )}>
                   {msg.role !== 'System' && (
-                    <div className="flex items-center gap-2 mb-1.5 opacity-60 text-[10px] font-bold uppercase tracking-widest">
-                      <span>{msg.role}</span>
+                    <div className="mb-1.5 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest opacity-60">
+                      <span>{getRoleLabel(msg.role)}</span>
                       <span className="w-1 h-1 bg-current rounded-full" />
                       <span className="font-mono">{msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                     </div>
@@ -566,42 +616,45 @@ export default function App() {
       </main>
 
       {/* Control Area */}
-      <footer className="p-6 bg-neutral-950 border-t border-neutral-800 shrink-0 shadow-2xl">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center gap-6">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+      <footer className="shrink-0 border-t border-[color:var(--app-border)] bg-[var(--app-surface-strong)]/90 px-4 py-4 shadow-[var(--app-shadow)] backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-center">
+          <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
             {status === 'disconnected' ? (
               <button
                 onClick={handleStart}
-                className="flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 active:scale-95 transition-all px-8 py-3.5 rounded-xl font-bold w-full sm:w-auto text-white shadow-[0_0_20px_rgba(37,99,235,0.3)]"
+                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-blue-600 px-8 py-3.5 font-bold text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] transition-all hover:bg-blue-500 active:scale-95 sm:w-auto"
               >
                 <Play size={20} fill="currentColor" />
-                Start Live Call
+                {text.controls.startLiveCall}
               </button>
             ) : (
               <button
                 onClick={handleStop}
-                className="flex items-center justify-center gap-3 bg-red-600 hover:bg-red-500 active:scale-95 transition-all px-8 py-3.5 rounded-xl font-bold w-full sm:w-auto text-white shadow-[0_0_20px_rgba(220,38,38,0.3)] animate-pulse"
+                className="flex w-full items-center justify-center gap-3 rounded-2xl bg-red-600 px-8 py-3.5 font-bold text-white shadow-[0_0_20px_rgba(220,38,38,0.3)] transition-all hover:bg-red-500 active:scale-95 sm:w-auto"
               >
                 <Square size={20} fill="currentColor" />
-                End Session
+                {text.controls.endSession}
               </button>
             )}
 
             <button
               onClick={exportLog}
               disabled={messages.length === 0}
-              className="p-3.5 bg-neutral-800 hover:bg-neutral-700 disabled:opacity-30 disabled:cursor-not-allowed rounded-xl text-neutral-300 transition-all active:scale-90 border border-neutral-700"
-              title="Export Log"
+              className={cn(
+                "rounded-2xl border p-3.5 transition-all active:scale-90 disabled:cursor-not-allowed disabled:opacity-30",
+                fieldClass
+              )}
+              title={text.controls.exportLog}
             >
               <Download size={20} />
             </button>
           </div>
 
-          <form onSubmit={handleSendWhisper} className="flex-1 flex w-full relative group">
+          <form onSubmit={handleSendWhisper} className="relative flex w-full flex-1">
             <input
               type="text"
-              placeholder={status === 'connected' ? "Whisper a command to the AI..." : "Connect to whisper commands"}
-              className="w-full bg-neutral-900 border border-neutral-800 group-hover:border-neutral-700 rounded-xl pl-5 pr-14 py-3.5 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all shadow-inner placeholder:text-neutral-700"
+              placeholder={status === 'connected' ? text.controls.whisperConnected : text.controls.whisperDisconnected}
+              className={cn("w-full rounded-2xl py-3.5 pl-5 pr-14 text-sm md:text-base", fieldClass)}
               value={whisperText}
               onChange={(e) => setWhisperText(e.target.value)}
               disabled={status !== 'connected'}
@@ -609,7 +662,7 @@ export default function App() {
             <button
               type="submit"
               disabled={status !== 'connected' || !whisperText.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center rounded-lg text-neutral-500 hover:text-purple-400 hover:bg-purple-500/10 disabled:opacity-0 transition-all"
+              className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl text-[var(--app-text-soft)] transition-all hover:bg-purple-500/10 hover:text-purple-400 disabled:opacity-0"
             >
               <Send size={20} />
             </button>
