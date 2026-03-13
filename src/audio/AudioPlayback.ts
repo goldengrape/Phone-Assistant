@@ -28,8 +28,12 @@ export class AudioPlayback {
     this.nextStartTime = this.audioContext.currentTime;
   }
 
-  async playChunk(pcm16Data: Int16Array) {
+  async playChunk(pcm16Data: Int16Array, sampleRate: number = this.sampleRate) {
     if (!pcm16Data.length) return;
+    if (sampleRate !== this.sampleRate) {
+      this.stop();
+      this.sampleRate = sampleRate;
+    }
     if (!this.audioContext) {
       await this.init();
     } else {

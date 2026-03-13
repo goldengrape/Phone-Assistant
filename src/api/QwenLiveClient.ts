@@ -122,7 +122,7 @@ export class QwenLiveClient extends AIClient {
       const response = JSON.parse(event.data);
       const eventType = response.type;
 
-      if (eventType === "response.audio.delta") {
+       if (eventType === "response.audio.delta") {
         const delta = response.delta;
         if (delta) {
            const pcm16 = base64ToInt16(delta);
@@ -130,15 +130,17 @@ export class QwenLiveClient extends AIClient {
         }
       } else if (eventType === "conversation.item.input_audio_transcription.completed") {
          const transcript = response.transcript;
-         if (transcript) {
-            this.options.onTranscript('User', transcript);
-         }
-      } else if (eventType === "response.audio_transcript.done") {
+          if (transcript) {
+            this.options.onTranscriptPreview?.('User', transcript, true);
+             this.options.onTranscript('User', transcript);
+          }
+       } else if (eventType === "response.audio_transcript.done") {
          const transcript = response.transcript;
-         if (transcript) {
-            this.options.onTranscript('AI', transcript);
-         }
-      } else if (eventType === "error") {
+          if (transcript) {
+            this.options.onTranscriptPreview?.('AI', transcript, true);
+             this.options.onTranscript('AI', transcript);
+          }
+       } else if (eventType === "error") {
          console.error("Qwen Event Error:", response.error);
       }
     } catch (err) {

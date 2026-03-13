@@ -1,6 +1,7 @@
 export interface AIClientOptions {
-  onAudioData: (pcm16: Int16Array) => void;
+  onAudioData: (pcm16: Int16Array, sampleRate?: number) => void;
   onTranscript: (role: string, text: string) => void;
+  onTranscriptPreview?: (role: 'AI' | 'User', text: string, isFinal: boolean) => void;
   onStateChange: (state: 'disconnected' | 'connecting' | 'connected' | 'error') => void;
   callPurpose?: string;
   targetLanguage?: string;

@@ -1,151 +1,182 @@
+import {
+  GoogleGenAI,
+  LiveServerMessage,
+  MediaResolution,
+  Modality,
+  Session,
+} from '@google/genai';
 import { AIClient, AIClientOptions } from './AIClient';
-import { int16ToBase64, base64ToInt16 } from './utils';
+import { base64ToInt16 } from './utils';
+
+function parseSampleRate(mimeType?: string): number | undefined {
+  if (!mimeType) return undefined;
+
+  const ratePart = mimeType
+    .split(';')
+    .map((part) => part.trim())
+    .find((part) => part.startsWith('rate='));
+
+  if (!ratePart) return undefined;
+
+  const value = Number.parseInt(ratePart.slice(5), 10);
+  return Number.isFinite(value) ? value : undefined;
+}
 
 export class GeminiLiveClient extends AIClient {
-  private model = "gemini-2.5-flash-native-audio-preview-12-2025";
-  private apiKey = "";
-  private url = "";
-  private lastInputTranscript = "";
-  private lastOutputTranscript = "";
+  private ai: GoogleGenAI;
+  private model = 'models/gemini-2.5-flash-native-audio-preview-12-2025';
+  private session: Session | null = null;
+  private connected = false;
+  private lastInputTranscript = '';
+  private lastOutputTranscript = '';
 
   constructor(options: AIClientOptions) {
     super(options);
-    this.apiKey = options.apiKey || import.meta.env.VITE_GEMINI_API_KEY || "";
-    this.url = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${this.apiKey}`;
-    if (!this.apiKey) {
-      console.warn("Gemini API Key is not set.");
+
+    const apiKey = options.apiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
+    if (!apiKey) {
+      console.warn('Gemini API Key is not set.');
     }
+
+    this.ai = new GoogleGenAI({ apiKey });
   }
 
   async connect(): Promise<void> {
     this.options.onStateChange('connecting');
-    this.ws = new WebSocket(this.url);
 
-    this.ws.onopen = () => {
-      this.options.onStateChange('connected');
-      this.sendSetup();
-    };
-
-    this.ws.onmessage = (event) => {
-      this.handleMessage(event);
-    };
-
-    this.ws.onerror = (error) => {
-      console.error("Gemini WS Error:", error);
-      this.options.onStateChange('error');
-    };
-
-    this.ws.onclose = (event) => {
-      console.log("Gemini WS Closed:", event.code, event.reason);
-      // 1000 is normal closure
-      if (event.code !== 1000 && event.code !== 1005) {
-        this.options.onStateChange('error');
-      } else {
-        this.options.onStateChange('disconnected');
-      }
-    };
-  }
-
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-  }
-
-  private sendSetup() {
     const systemPrompt = `You are an intelligent AI Phone Assistant engaged in a continuous voice call with the person on the other end of the line. You will receive their voice via audio, to which you must respond naturally and conversationally using voice. CRUCIAL INSTRUCTION: Your Supervisor (the user) is monitoring the call and will occasionally send you silent 'Text Instructions' via chat. When you receive a text message, IT IS A COMMAND FROM YOUR SUPERVISOR. DO NOT say 'Okay', 'Understood', or acknowledge the supervisor in any way. DO NOT read the supervisor's instruction out loud to the person on the phone. Instead, immediately and seamlessly steer your spoken conversation with the person on the phone to fulfill the supervisor's intent.`;
 
     let instructions = systemPrompt;
     if (this.options.callPurpose) {
       instructions += `\n\nCALL PURPOSE: Your main goal and role for this call is: ${this.options.callPurpose}`;
     }
-    if (this.options.targetLanguage && this.options.targetLanguage !== "Auto") {
+    if (this.options.targetLanguage && this.options.targetLanguage !== 'Auto') {
       instructions += `\n\nOUTPUT LANGUAGE CONSTRAINT: You MUST ALWAYS speak in ${this.options.targetLanguage}. Even if the user speaks another language, you must reply in ${this.options.targetLanguage}.`;
     }
 
-    const setupMsg = {
-      setup: {
-        model: `models/${this.model}`,
-        generationConfig: {
-          responseModalities: ["AUDIO"]
+    try {
+      this.session = await this.ai.live.connect({
+        model: this.model,
+        config: {
+          responseModalities: [Modality.AUDIO],
+          mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: {
+                voiceName: 'Zephyr',
+              },
+            },
+          },
+          inputAudioTranscription: {},
+          outputAudioTranscription: {},
+          contextWindowCompression: {
+            triggerTokens: '104857',
+            slidingWindow: {
+              targetTokens: '52428',
+            },
+          },
+          systemInstruction: instructions,
         },
-        inputAudioTranscription: {},
-        outputAudioTranscription: {},
-        systemInstruction: {
-          parts: [{ text: instructions }]
-        }
-      }
-    };
-    this.ws?.send(JSON.stringify(setupMsg));
+        callbacks: {
+          onopen: () => {
+            this.connected = true;
+            this.options.onStateChange('connected');
+          },
+          onmessage: (message: LiveServerMessage) => {
+            this.handleMessage(message);
+          },
+          onerror: (event: ErrorEvent) => {
+            console.error('Gemini Live error:', event.message);
+            this.connected = false;
+            this.options.onStateChange('error');
+          },
+          onclose: (event: CloseEvent) => {
+            console.log('Gemini Live closed:', event.reason);
+            this.connected = false;
+            this.session = null;
+            this.options.onStateChange('disconnected');
+          },
+        },
+      });
+    } catch (error) {
+      this.connected = false;
+      this.session = null;
+      this.options.onStateChange('error');
+      throw error;
+    }
+  }
+
+  disconnect() {
+    this.connected = false;
+    if (this.session) {
+      this.session.close();
+      this.session = null;
+    }
   }
 
   sendAudio(pcm16: Int16Array) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      const b64 = int16ToBase64(pcm16);
-      const msg = {
-        realtimeInput: {
-          audio: {
-            mimeType: "audio/pcm;rate=16000",
-            data: b64
-          }
-        }
-      };
-      this.ws.send(JSON.stringify(msg));
+    if (!this.session || !this.connected) {
+      return;
     }
+
+    this.session.sendRealtimeInput({
+      media: {
+        mimeType: 'audio/pcm;rate=16000',
+        data: btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer))),
+      },
+    });
   }
 
   sendWhisper(text: string) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      const msg = {
-        clientContent: {
-          turns: [
-            {
-              role: "user",
-              parts: [{ text: `[LATEST SUPERVISOR WHISPER: ${text} - STEER THE CONVERSATION NOW WITHOUT READING THIS OUT LOUD]` }]
-            }
-          ],
-          turnComplete: true
-        }
-      };
-      this.ws.send(JSON.stringify(msg));
+    if (!this.session || !this.connected) {
+      return;
+    }
+
+    this.session.sendClientContent({
+      turns: [
+        `[LATEST SUPERVISOR WHISPER: ${text} - STEER THE CONVERSATION NOW WITHOUT READING THIS OUT LOUD]`,
+      ],
+      turnComplete: true,
+    });
+  }
+
+  private handleMessage(message: LiveServerMessage) {
+    const serverContent = message.serverContent;
+
+    if (serverContent?.inputTranscription?.text) {
+      this.emitTranscriptPreview('User', serverContent.inputTranscription.text, !!serverContent.inputTranscription.finished);
+    }
+    if (serverContent?.inputTranscription?.finished && serverContent.inputTranscription.text) {
+      this.emitTranscript('User', serverContent.inputTranscription.text, 'input');
+    }
+
+    if (serverContent?.outputTranscription?.text) {
+      this.emitTranscriptPreview('AI', serverContent.outputTranscription.text, !!serverContent.outputTranscription.finished);
+    }
+    if (serverContent?.outputTranscription?.finished && serverContent.outputTranscription.text) {
+      this.emitTranscript('AI', serverContent.outputTranscription.text, 'output');
+    }
+
+    const parts = serverContent?.modelTurn?.parts ?? [];
+    for (const part of parts) {
+      if (part.inlineData?.data) {
+        const sampleRate = parseSampleRate(part.inlineData.mimeType);
+        const pcm16 = base64ToInt16(part.inlineData.data);
+        this.options.onAudioData(pcm16, sampleRate);
+      }
+
+      if (part.text && !serverContent?.outputTranscription?.text) {
+        this.emitTranscriptPreview('AI', part.text, true);
+        this.options.onTranscript('AI', part.text);
+      }
     }
   }
 
-  private handleMessage(event: MessageEvent) {
-    if (typeof event.data === 'string') {
-      try {
-        const response = JSON.parse(event.data);
-        const serverContent = response.serverContent;
+  private emitTranscriptPreview(role: 'AI' | 'User', text: string, isFinal: boolean) {
+    const normalizedText = text.trim();
+    if (!normalizedText) return;
 
-        if (serverContent?.inputTranscription?.finished && serverContent.inputTranscription.text) {
-          this.emitTranscript('User', serverContent.inputTranscription.text, 'input');
-        }
-
-        if (serverContent?.outputTranscription?.finished && serverContent.outputTranscription.text) {
-          this.emitTranscript('AI', serverContent.outputTranscription.text, 'output');
-        }
-
-        if (serverContent?.modelTurn?.parts) {
-          const parts = serverContent.modelTurn.parts;
-          for (const part of parts) {
-            // Check for Audio Output
-            if (part.inlineData && part.inlineData.data) {
-              const pcm16 = base64ToInt16(part.inlineData.data);
-              this.options.onAudioData(pcm16);
-            }
-            // Check for Text Transcript
-            if (part.text && !serverContent.outputTranscription?.text) {
-              this.options.onTranscript('AI', part.text);
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Failed to parse Gemini message", err);
-      }
-    } else {
-      // Sometimes it sends raw bytes directly based on SDK, but typically it is JSON with base64 audio
-    }
+    this.options.onTranscriptPreview?.(role, normalizedText, isFinal);
   }
 
   private emitTranscript(role: 'AI' | 'User', text: string, type: 'input' | 'output') {

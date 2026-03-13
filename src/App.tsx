@@ -47,6 +47,8 @@ export default function App() {
   const [speakerState, setSpeakerState] = useState<'idle' | 'waiting' | 'playing'>('idle');
   const [inputConfirmed, setInputConfirmed] = useState(false);
   const [outputConfirmed, setOutputConfirmed] = useState(false);
+  const [latestUserTranscript, setLatestUserTranscript] = useState('');
+  const [latestAiTranscript, setLatestAiTranscript] = useState('');
 
   const clientRef = useRef<AIClient | null>(null);
   const captureRef = useRef<AudioCapture | null>(null);
@@ -90,6 +92,8 @@ export default function App() {
     setSpeakerState('waiting');
     setInputConfirmed(false);
     setOutputConfirmed(false);
+    setLatestUserTranscript('');
+    setLatestAiTranscript('');
     if (speakerResetTimerRef.current !== null) {
       window.clearTimeout(speakerResetTimerRef.current);
       speakerResetTimerRef.current = null;
@@ -123,7 +127,7 @@ export default function App() {
         callPurpose,
         targetLanguage: language,
         apiKey: apiKey,
-        onAudioData: (pcm16: Int16Array) => {
+        onAudioData: (pcm16: Int16Array, sampleRate?: number) => {
           const level = getPcmLevel(pcm16);
           setSpeakerLevel(level);
           setSpeakerState('playing');
@@ -143,10 +147,22 @@ export default function App() {
           }
 
           if (playbackRef.current) {
-            void playbackRef.current.playChunk(pcm16);
+            void playbackRef.current.playChunk(pcm16, sampleRate);
+          }
+        },
+        onTranscriptPreview: (role: 'AI' | 'User', text: string) => {
+          if (role === 'User') {
+            setLatestUserTranscript(text);
+          } else {
+            setLatestAiTranscript(text);
           }
         },
         onTranscript: (role: string, text: string) => {
+          if (role === 'User') {
+            setLatestUserTranscript(text);
+          } else if (role === 'AI') {
+            setLatestAiTranscript(text);
+          }
           addMessage({ role: role as 'AI' | 'User', text });
         },
         onStateChange: (newState: 'disconnected' | 'connecting' | 'connected' | 'error') => {
@@ -203,6 +219,8 @@ export default function App() {
     setSpeakerState('idle');
     setInputConfirmed(false);
     setOutputConfirmed(false);
+    setLatestUserTranscript('');
+    setLatestAiTranscript('');
     setStatus('disconnected');
     addMessage({ role: 'System', text: 'Call ended.' });
   };
@@ -454,6 +472,9 @@ export default function App() {
                 style={{ width: `${Math.round(micLevel * 100)}%` }}
               />
             </div>
+            <div className="mt-3 min-h-10 rounded-lg border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-xs text-neutral-400">
+              {latestUserTranscript || 'Recognized user speech will appear here.'}
+            </div>
           </div>
 
           <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4 shadow-lg">
@@ -494,6 +515,9 @@ export default function App() {
                 className="h-full rounded-full bg-blue-400 transition-[width] duration-150"
                 style={{ width: `${Math.round(speakerLevel * 100)}%` }}
               />
+            </div>
+            <div className="mt-3 min-h-10 rounded-lg border border-neutral-800 bg-neutral-900/70 px-3 py-2 text-xs text-neutral-400">
+              {latestAiTranscript || 'Recognized assistant speech will appear here.'}
             </div>
           </div>
         </section>
