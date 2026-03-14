@@ -1,6 +1,14 @@
 import { create } from 'zustand';
 import type { UiLanguage } from '../i18n';
 import { DEFAULT_GEMINI_VOICE, type GeminiVoiceName } from '../voices';
+import {
+  CUSTOM_SKILL_ID,
+  DEFAULT_CUSTOM_SKILL,
+  DEFAULT_SKILL_PRESET_ID,
+  getSkillPresetById,
+  isSkillPresetId,
+  type SkillPresetId,
+} from '../skills';
 
 interface Message {
   id: string;
@@ -18,6 +26,8 @@ interface AppState {
   setUiLanguage: (language: UiLanguage) => void;
   geminiVoice: GeminiVoiceName;
   setGeminiVoice: (voice: GeminiVoiceName) => void;
+  skillPresetId: SkillPresetId;
+  setSkillPresetId: (skillPresetId: SkillPresetId) => void;
   callPurpose: string;
   setCallPurpose: (cp: string) => void;
 
@@ -34,9 +44,27 @@ interface AppState {
   clearMessages: () => void;
 }
 
-const DEFAULT_CALL_PURPOSE = 'You are an intelligent AI Phone Assistant...';
+const CALL_PURPOSE_STORAGE_KEY = 'call_purpose';
+const CUSTOM_CALL_PURPOSE_STORAGE_KEY = 'custom_call_purpose';
+const SKILL_PRESET_STORAGE_KEY = 'skill_preset_id';
 
-export const useAppStore = create<AppState>((set) => ({
+function getInitialSkillPresetId(): SkillPresetId {
+  const storedPreset = localStorage.getItem(SKILL_PRESET_STORAGE_KEY);
+  return isSkillPresetId(storedPreset) ? storedPreset : DEFAULT_SKILL_PRESET_ID;
+}
+
+function getCallPurposeForSkill(skillPresetId: SkillPresetId): string {
+  if (skillPresetId === CUSTOM_SKILL_ID) {
+    return localStorage.getItem(CUSTOM_CALL_PURPOSE_STORAGE_KEY) || DEFAULT_CUSTOM_SKILL;
+  }
+
+  return getSkillPresetById(skillPresetId)?.prompt || getSkillPresetById(DEFAULT_SKILL_PRESET_ID)?.prompt || '';
+}
+
+const initialSkillPresetId = getInitialSkillPresetId();
+const initialCallPurpose = localStorage.getItem(CALL_PURPOSE_STORAGE_KEY) || getCallPurposeForSkill(initialSkillPresetId);
+
+export const useAppStore = create<AppState>((set, get) => ({
   model: 'Gemini',
   setModel: (m) => set({ model: m }),
   language: localStorage.getItem('target_language') || 'Auto',
@@ -54,9 +82,32 @@ export const useAppStore = create<AppState>((set) => ({
     localStorage.setItem('gemini_voice', geminiVoice);
     set({ geminiVoice });
   },
-  callPurpose: localStorage.getItem('call_purpose') || DEFAULT_CALL_PURPOSE,
+  skillPresetId: initialSkillPresetId,
+  setSkillPresetId: (skillPresetId) => {
+    const nextCallPurpose = getCallPurposeForSkill(skillPresetId);
+    localStorage.setItem(SKILL_PRESET_STORAGE_KEY, skillPresetId);
+    localStorage.setItem(CALL_PURPOSE_STORAGE_KEY, nextCallPurpose);
+    set({ skillPresetId, callPurpose: nextCallPurpose });
+  },
+  callPurpose: initialCallPurpose,
   setCallPurpose: (callPurpose) => {
-    localStorage.setItem('call_purpose', callPurpose);
+    const { skillPresetId } = get();
+    localStorage.setItem(CALL_PURPOSE_STORAGE_KEY, callPurpose);
+
+    if (skillPresetId === CUSTOM_SKILL_ID) {
+      localStorage.setItem(CUSTOM_CALL_PURPOSE_STORAGE_KEY, callPurpose);
+      set({ callPurpose });
+      return;
+    }
+
+    const preset = getSkillPresetById(skillPresetId);
+    if (preset && preset.prompt !== callPurpose) {
+      localStorage.setItem(SKILL_PRESET_STORAGE_KEY, CUSTOM_SKILL_ID);
+      localStorage.setItem(CUSTOM_CALL_PURPOSE_STORAGE_KEY, callPurpose);
+      set({ callPurpose, skillPresetId: CUSTOM_SKILL_ID });
+      return;
+    }
+
     set({ callPurpose });
   },
 

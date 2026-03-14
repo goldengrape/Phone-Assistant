@@ -1,7 +1,8 @@
 {
-  "name": "temp-app",
+  "name": "ai-phone-assistant",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Early-stage BYOK AI phone assistant frontend built with React and Vite.",
   "type": "module",
   "scripts": {
     "dev": "vite",

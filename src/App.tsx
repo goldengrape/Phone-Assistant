@@ -7,11 +7,11 @@ import { useAppStore } from './store/useAppStore';
 import { AudioCapture } from './audio/AudioCapture';
 import { AudioPlayback } from './audio/AudioPlayback';
 import { GeminiLiveClient } from './api/GeminiLiveClient';
-import { QwenLiveClient } from './api/QwenLiveClient';
 import { AIClient, AIClientOptions } from './api/AIClient';
 import { resolveLocale, targetLanguageOptions, translations, uiLanguageOptions } from './i18n';
 import { estimateTokens, getPcmLevel, mergeTranscriptText } from './lib/sessionUtils';
 import { cn } from './lib/utils';
+import { CUSTOM_SKILL_ID, getSkillPresetById, skillPresets, type SkillPresetId } from './skills';
 import { geminiVoiceOptions, type GeminiVoiceName } from './voices';
 
 const OUTPUT_ACTIVITY_RESET_MS = 250;
@@ -26,13 +26,12 @@ type LiveTranscriptPreview = {
 
 export default function App() {
   const {
-    model, setModel,
     language, setLanguage,
     uiLanguage, setUiLanguage,
     geminiVoice, setGeminiVoice,
+    skillPresetId, setSkillPresetId,
     callPurpose, setCallPurpose,
     geminiApiKey, setGeminiApiKey,
-    qwenApiKey, setQwenApiKey,
     status, setStatus,
     messages, addMessage, clearMessages
   } = useAppStore();
@@ -193,11 +192,66 @@ export default function App() {
       credentialsSubtitle: 'Se guardan solo en el navegador local de este dispositivo.',
     },
   }[locale];
-  const modelLabel = model === 'Gemini' ? text.misc.modelGemini : text.misc.modelQwen;
+  const providerBadge = 'Gemini API only';
+  const guidanceCopy = false
+    ? {
+        appVersionLabel: 'v0.1.0 preview',
+        quickHelpTitle: 'ä½¿ç”¨å¸®åŠ©',
+        quickHelpIntro: 'è¿™ä¸ªç‰ˆæœ¬é€‚åˆéƒ¨ç½²åˆ° Renderï¼ŒæœåŠ¡å™¨åªè´Ÿè´£æ‰˜ç®¡é™æ€é¡µé¢ã€‚',
+        helpSteps: [
+          'å…ˆç‚¹å¼€ Settingsï¼Œå¡«å…¥ä½ è‡ªå·±çš„ Gemini API keyã€‚',
+          'ä»Žä¸‹æ–¹ skill ç¤ºä¾‹é‡Œé€‰ä¸€ä¸ªæ¨¡æ¿ï¼Œæˆ–åˆ‡åˆ° Custom ç©ºç™½ç‰ˆæœ¬è‡ªå·±å†™ã€‚',
+          'å¼€å§‹é€šè¯åŽï¼Œå¯ä»¥ç»§ç»­é€šè¿‡åº•éƒ¨è¾“å…¥æ¡†ç»™ AI å‘é€é™é»˜æŒ‡ä»¤ã€‚',
+        ],
+        disclaimers: [
+          'BYOKï¼šAPI key ç”±ç”¨æˆ·è‡ªè¡Œæä¾›ï¼Œé»˜è®¤åªä¿å­˜åœ¨å½“å‰æµè§ˆå™¨çš„ localStorageã€‚',
+          'è°ƒç”¨è´¹ç”¨ã€é€ŸçŽ‡é™åˆ¶å’Œè´¦å·é£ŽæŽ§éƒ½å½’å±žç”¨æˆ·è‡ªå·±çš„ Gemini è´¦æˆ·ã€‚',
+          'è¿™æ˜¯æ—©æœŸç‰ˆæœ¬ï¼Œè¯·åœ¨çœŸå®žä¸šåŠ¡é€šè¯å‰å…ˆè‡ªè¡ŒéªŒè¯æç¤ºè¯å’Œæ¨¡åž‹è¡Œä¸ºã€‚',
+        ],
+        keyLinkLabel: 'åŽ»ç”³è¯· Gemini API key',
+        keyHelper: 'Google å®˜æ–¹å…¥å£',
+        skillPresetLabel: 'Skill ç¤ºä¾‹',
+        skillPresetHint: 'é€‰æ‹©é¢„è®¾åŽå¯ä»¥ç›´æŽ¥ç¼–è¾‘ï¼›åªè¦ä½ å¼€å§‹æ”¹å†™å†…å®¹ï¼Œç³»ç»Ÿä¼šè‡ªåŠ¨åˆ‡åˆ° Customï¼Œå¹¶æŠŠå†…å®¹ä¿å­˜åˆ°å½“å‰æµè§ˆå™¨ã€‚',
+        customOptionLabel: 'Custom (blank)',
+        customHint: 'Custom é»˜è®¤æ˜¯ç©ºç™½ç‰ˆæœ¬ï¼Œé€‚åˆä½ ä»Žå¤´å†™è‡ªå·±çš„ skillã€‚',
+        clearCustomLabel: 'æ¸…ç©º Custom',
+        helpCardBody: 'è¿™ä¸ªç‰ˆæœ¬æ²¡æœ‰æœåŠ¡å™¨ç«¯è´¦å·ç³»ç»Ÿï¼Œä¹Ÿä¸ä¼šæ›¿ä½ æ‰˜ç®¡ Gemini keyã€‚',
+        disclaimerCardTitle: 'å®‰å…¨ä¸Žè´£ä»»è¾¹ç•Œ',
+        credentialHelp: 'å¯†é’¥ç”±ä½ è‡ªå·±è¾“å…¥ï¼Œä»…ä¿å­˜åœ¨æœ¬åœ°æµè§ˆå™¨ã€‚Render ç«¯ä¸ä¿å­˜ç”¨æˆ· keyã€‚',
+      }
+    : {
+        appVersionLabel: 'v0.1.0 preview',
+        quickHelpTitle: 'Help',
+        quickHelpIntro: 'This build is designed for Render as a static frontend. The server only hosts static assets.',
+        helpSteps: [
+          'Open Settings and paste your own Gemini API key.',
+          'Choose a sample skill below, or switch to the blank Custom option and write your own.',
+          'Start the call, then use the whisper input at the bottom to steer the AI silently.',
+        ],
+        disclaimers: [
+          'BYOK: the Gemini API key is provided by the user and stored only in this browser localStorage by default.',
+          'Usage charges, quotas, and account policy enforcement stay under the user’s own Gemini account.',
+          'This is an early preview. Review the prompt and model behavior before using it for real calls.',
+        ],
+        keyLinkLabel: 'Get a Gemini API key',
+        keyHelper: 'Official Google AI Studio link',
+        skillPresetLabel: 'Skill Example',
+        skillPresetHint: 'Choose a preset as a starting point. As soon as you edit it, the app switches to Custom and saves that text locally in your browser.',
+        customOptionLabel: 'Custom (blank)',
+        customHint: 'Custom starts blank so you can write your own skill from scratch.',
+        clearCustomLabel: 'Clear Custom',
+        helpCardBody: 'This version has no server-side account system and does not host Gemini keys for users.',
+        disclaimerCardTitle: 'Safety and Responsibility',
+        credentialHelp: 'You enter the key yourself, and it stays in local browser storage on this device.',
+      };
+  const modelLabel = text.misc.modelGemini;
   const surfaceClass = 'border border-[color:var(--app-border)] bg-[var(--app-surface)] shadow-[var(--app-shadow)] backdrop-blur-xl';
   const surfaceStrongClass = 'border border-[color:var(--app-border)] bg-[var(--app-surface-strong)] shadow-[var(--app-shadow)] backdrop-blur-xl';
   const fieldClass = 'border border-[color:var(--app-input-border)] bg-[var(--app-input)] text-[var(--app-text)] shadow-inner placeholder:text-[var(--app-text-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--app-ring)]';
   const subCardClass = 'rounded-2xl border border-[color:var(--app-border)] bg-[color:var(--app-surface-muted)]/80 p-4';
+  const selectedSkillPreset = getSkillPresetById(skillPresetId);
+  const isCustomSkill = skillPresetId === CUSTOM_SKILL_ID;
+  const geminiApiKeyUrl = 'https://aistudio.google.com/app/apikey';
 
   const getRoleLabel = (role: 'AI' | 'User' | 'Supervisor' | 'System') => {
     if (role === 'AI') return text.misc.roleAI;
@@ -342,7 +396,7 @@ export default function App() {
   const handleStart = async (startMarker: number) => {
     if (status !== 'disconnected') return;
 
-    const apiKey = model === 'Gemini' ? geminiApiKey : qwenApiKey;
+    const apiKey = geminiApiKey;
     if (!apiKey) {
       addMessage({ role: 'System', text: text.system.setApiKeyFirst(modelLabel) });
       setShowSettings(true);
@@ -394,7 +448,7 @@ export default function App() {
       const options = {
         callPurpose,
         targetLanguage: language,
-        voiceName: model === 'Gemini' ? geminiVoice : undefined,
+        voiceName: geminiVoice,
         apiKey: apiKey,
         onAudioData: (pcm16: Int16Array, sampleRate?: number) => {
           const level = getPcmLevel(pcm16);
@@ -447,11 +501,7 @@ export default function App() {
         }
       };
 
-      if (model === 'Gemini') {
-        clientRef.current = new GeminiLiveClient(options);
-      } else {
-        clientRef.current = new QwenLiveClient(options);
-      }
+      clientRef.current = new GeminiLiveClient(options);
 
       await clientRef.current.connect();
 
@@ -467,7 +517,7 @@ export default function App() {
   };
 
   const testApiKey = async () => {
-    const apiKey = model === 'Gemini' ? geminiApiKey : qwenApiKey;
+    const apiKey = geminiApiKey;
     if (!apiKey) return;
 
     setTestingKey(true);
@@ -490,13 +540,11 @@ export default function App() {
             setTestingKey(false);
           }
         },
-        voiceName: model === 'Gemini' ? geminiVoice : undefined,
+        voiceName: geminiVoice,
         apiKey: apiKey
       };
 
-      testClient = model === 'Gemini' 
-        ? new GeminiLiveClient(options) 
-        : new QwenLiveClient(options);
+      testClient = new GeminiLiveClient(options);
       
       await testClient.connect();
       
@@ -557,7 +605,7 @@ export default function App() {
     + contextRelevantMessages.reduce((total, msg) => total + estimateTokens(msg.text), 0)
     + transcriptPreviewTokenEstimate;
   const contextUsageRatio = Math.min(1, contextTokenEstimate / GEMINI_CONTEXT_TRIGGER_TOKENS);
-  const contextCompressionLikely = model === 'Gemini' && contextTokenEstimate >= GEMINI_CONTEXT_TRIGGER_TOKENS;
+  const contextCompressionLikely = contextTokenEstimate >= GEMINI_CONTEXT_TRIGGER_TOKENS;
   const sessionAgeMs = status === 'connected' && sessionStartedAt !== null && sessionClock !== null
     ? Math.max(0, Math.round(sessionClock - sessionStartedAt))
     : 0;
@@ -578,7 +626,7 @@ export default function App() {
             <Mic className="text-blue-500" size={24} />
             <h1 className="min-w-0 text-lg font-bold tracking-tight sm:text-xl">
               {text.misc.appTitle}
-              <span className="ml-2 text-xs font-normal text-[var(--app-text-soft)]">v1.1.0</span>
+              <span className="ml-2 text-xs font-normal text-[var(--app-text-soft)]">{guidanceCopy.appVersionLabel}</span>
             </h1>
             <span className={cn(
               "ml-auto rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider sm:ml-2",
@@ -591,21 +639,9 @@ export default function App() {
           </div>
 
           <div className="flex w-full items-center gap-3 sm:w-auto">
-            <select
-              disabled={status !== 'disconnected'}
-              className={cn(
-                "min-w-0 flex-1 rounded-xl px-3 py-2 text-sm disabled:opacity-50 sm:w-72 sm:flex-none",
-                fieldClass
-              )}
-              value={model}
-              onChange={(e) => {
-                setModel(e.target.value as 'Gemini' | 'Qwen');
-                setTestResult(null);
-              }}
-            >
-              <option value="Gemini">{text.misc.modelGemini}</option>
-              <option value="Qwen">{text.misc.modelQwen}</option>
-            </select>
+            <div className="hidden rounded-full border border-[color:var(--app-border)] bg-[var(--app-input)] px-3 py-2 text-xs font-medium text-[var(--app-text-soft)] sm:block">
+              {providerBadge}
+            </div>
 
             <button 
               onClick={() => setShowSettings(!showSettings)}
@@ -635,7 +671,7 @@ export default function App() {
                     <p className="mt-1 text-xs text-[var(--app-text-soft)]">{settingsCopy.providerSettings}</p>
                   </div>
                   <div className="rounded-full border border-[color:var(--app-border)] bg-[var(--app-input)] px-3 py-1 text-[11px] font-medium text-[var(--app-text-soft)]">
-                    {modelLabel}
+                    {providerBadge}
                   </div>
                 </div>
 
@@ -671,23 +707,21 @@ export default function App() {
                     </select>
                   </div>
 
-                  {model === 'Gemini' && (
-                    <div className="space-y-2 lg:col-span-2">
-                      <label className="text-xs font-medium text-[var(--app-text-soft)]">{settingsCopy.voicePreset}</label>
-                      <select
-                        disabled={status !== 'disconnected'}
-                        className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
-                        value={geminiVoice}
-                        onChange={(e) => setGeminiVoice(e.target.value as GeminiVoiceName)}
-                      >
-                        {geminiVoiceOptions.map((voice) => (
-                          <option key={voice.name} value={voice.name}>
-                            {`${voice.name} - ${voice.description}`}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
+                  <div className="space-y-2 lg:col-span-2">
+                    <label className="text-xs font-medium text-[var(--app-text-soft)]">{settingsCopy.voicePreset}</label>
+                    <select
+                      disabled={status !== 'disconnected'}
+                      className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
+                      value={geminiVoice}
+                      onChange={(e) => setGeminiVoice(e.target.value as GeminiVoiceName)}
+                    >
+                      {geminiVoiceOptions.map((voice) => (
+                        <option key={voice.name} value={voice.name}>
+                          {`${voice.name} - ${voice.description}`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -702,13 +736,9 @@ export default function App() {
                       type="password"
                       placeholder={`${modelLabel} API Key`}
                       className={cn("w-full rounded-xl py-2 pl-3 pr-24 text-sm font-mono transition-all", fieldClass)}
-                      value={model === 'Gemini' ? geminiApiKey : qwenApiKey}
+                      value={geminiApiKey}
                       onChange={(e) => {
-                        if (model === 'Gemini') {
-                          setGeminiApiKey(e.target.value);
-                        } else {
-                          setQwenApiKey(e.target.value);
-                        }
+                        setGeminiApiKey(e.target.value);
                         setTestResult(null);
                       }}
                     />
@@ -717,12 +747,23 @@ export default function App() {
                       {testResult === 'error' && <XCircle size={16} className="text-red-500 mr-1" />}
                       <button 
                         onClick={testApiKey}
-                        disabled={testingKey || !(model === 'Gemini' ? geminiApiKey : qwenApiKey)}
+                        disabled={testingKey || !geminiApiKey}
                         className="flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-[10px] font-bold text-white transition-colors hover:bg-blue-500 disabled:bg-neutral-700"
                       >
                         {testingKey ? <Loader2 size={12} className="animate-spin" /> : text.settings.test}
                       </button>
                     </div>
+                  </div>
+                  <div className="rounded-2xl border border-[color:var(--app-border)] bg-[var(--app-input)] p-3 text-xs text-[var(--app-text-soft)]">
+                    <p>{guidanceCopy.credentialHelp}</p>
+                    <a
+                      href={geminiApiKeyUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-flex text-sm font-medium text-blue-400 transition-colors hover:text-blue-300"
+                    >
+                      {guidanceCopy.keyLinkLabel}
+                    </a>
                   </div>
                 </div>
               </div>
@@ -733,6 +774,47 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-4 overflow-hidden px-4 py-4 sm:py-6">
+        <section className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <div className={cn("rounded-2xl p-4", surfaceClass)}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{guidanceCopy.quickHelpTitle}</h2>
+                <p className="mt-2 text-sm text-[var(--app-text)]">{guidanceCopy.quickHelpIntro}</p>
+              </div>
+              <a
+                href={geminiApiKeyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-xl bg-blue-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-blue-500"
+              >
+                {guidanceCopy.keyLinkLabel}
+              </a>
+            </div>
+            <ol className="mt-4 space-y-2 text-sm text-[var(--app-text-soft)]">
+              {guidanceCopy.helpSteps.map((step, index) => (
+                <li key={step} className="flex gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-[11px] font-bold text-blue-400">
+                    {index + 1}
+                  </span>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-4 text-xs text-[var(--app-text-soft)]">{guidanceCopy.helpCardBody}</p>
+          </div>
+
+          <div className={cn("rounded-2xl p-4", surfaceClass)}>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.22em] text-[var(--app-text-soft)]">{guidanceCopy.disclaimerCardTitle}</h2>
+            <ul className="mt-3 space-y-2 text-sm text-[var(--app-text-soft)]">
+              {guidanceCopy.disclaimers.map((item) => (
+                <li key={item} className="rounded-xl border border-[color:var(--app-border)] bg-[var(--app-surface-muted)] px-3 py-2">
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-xs text-[var(--app-text-soft)]">{guidanceCopy.keyHelper}</p>
+          </div>
+        </section>
         
         {/* System Prompt (Call Purpose) Section - AI Studio Style */}
         <section className={cn("overflow-hidden rounded-2xl transition-all duration-300", surfaceClass)}>
@@ -749,6 +831,45 @@ export default function App() {
           
           {showPrompt && (
             <div className="animate-in slide-in-from-top-1 fade-in border-t border-[color:var(--app-border)] p-4 duration-200">
+              <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,280px)_1fr]">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium text-[var(--app-text-soft)]">{guidanceCopy.skillPresetLabel}</label>
+                  <select
+                    disabled={status !== 'disconnected'}
+                    value={skillPresetId}
+                    onChange={(e) => setSkillPresetId(e.target.value as SkillPresetId)}
+                    className={cn("w-full rounded-xl px-3 py-2 text-sm", fieldClass)}
+                  >
+                    {skillPresets.map((preset) => (
+                      <option key={preset.id} value={preset.id}>
+                        {preset.label}
+                      </option>
+                    ))}
+                    <option value={CUSTOM_SKILL_ID}>{guidanceCopy.customOptionLabel}</option>
+                  </select>
+                  <div className="rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] p-3 text-xs text-[var(--app-text-soft)]">
+                    {isCustomSkill ? guidanceCopy.customHint : selectedSkillPreset?.summary}
+                  </div>
+                  {isCustomSkill && (
+                    <button
+                      type="button"
+                      disabled={status !== 'disconnected'}
+                      onClick={() => {
+                        setSkillPresetId(CUSTOM_SKILL_ID);
+                        setCallPurpose('');
+                      }}
+                      className="rounded-xl border border-[color:var(--app-border)] bg-[var(--app-surface-muted)] px-3 py-2 text-xs font-medium text-[var(--app-text)] transition-colors hover:bg-[var(--app-input)] disabled:opacity-50"
+                    >
+                      {guidanceCopy.clearCustomLabel}
+                    </button>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-[color:var(--app-border)] bg-[var(--app-surface-muted)]/60 p-3 text-xs text-[var(--app-text-soft)]">
+                  {guidanceCopy.skillPresetHint}
+                </div>
+              </div>
+
               <textarea
                 disabled={status !== 'disconnected'}
                 value={callPurpose}
@@ -853,8 +974,7 @@ export default function App() {
           </div>
         </section>
 
-        {model === 'Gemini' && (
-          <section className={cn("rounded-2xl p-4", surfaceClass)}>
+        <section className={cn("rounded-2xl p-4", surfaceClass)}>
             <button
               onClick={() => setShowSessionContext((current) => !current)}
               className="flex w-full items-center justify-between gap-4 text-left"
@@ -923,7 +1043,6 @@ export default function App() {
               </div>
             )}
           </section>
-        )}
 
         {/* Transcript Area */}
         <div
