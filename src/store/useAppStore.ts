@@ -28,6 +28,8 @@ interface AppState {
   setGeminiVoice: (voice: GeminiVoiceName) => void;
   skillPresetId: SkillPresetId;
   setSkillPresetId: (skillPresetId: SkillPresetId) => void;
+  selectedSkillId: string;
+  setSelectedSkillId: (skillId: string) => void;
   callPurpose: string;
   setCallPurpose: (cp: string) => void;
 
@@ -47,6 +49,7 @@ interface AppState {
 const CALL_PURPOSE_STORAGE_KEY = 'call_purpose';
 const CUSTOM_CALL_PURPOSE_STORAGE_KEY = 'custom_call_purpose';
 const SKILL_PRESET_STORAGE_KEY = 'skill_preset_id';
+const SELECTED_SKILL_STORAGE_KEY = 'selected_skill_id';
 
 function getInitialSkillPresetId(): SkillPresetId {
   const storedPreset = localStorage.getItem(SKILL_PRESET_STORAGE_KEY);
@@ -63,6 +66,7 @@ function getCallPurposeForSkill(skillPresetId: SkillPresetId): string {
 
 const initialSkillPresetId = getInitialSkillPresetId();
 const initialCallPurpose = localStorage.getItem(CALL_PURPOSE_STORAGE_KEY) || getCallPurposeForSkill(initialSkillPresetId);
+const initialSelectedSkillId = localStorage.getItem(SELECTED_SKILL_STORAGE_KEY) || (initialSkillPresetId === CUSTOM_SKILL_ID ? '' : initialSkillPresetId);
 
 export const useAppStore = create<AppState>((set, get) => ({
   model: 'Gemini',
@@ -85,11 +89,26 @@ export const useAppStore = create<AppState>((set, get) => ({
   skillPresetId: initialSkillPresetId,
   setSkillPresetId: (skillPresetId) => {
     const nextCallPurpose = getCallPurposeForSkill(skillPresetId);
+    const nextSelectedSkillId = skillPresetId === CUSTOM_SKILL_ID ? '' : skillPresetId;
     localStorage.setItem(SKILL_PRESET_STORAGE_KEY, skillPresetId);
     localStorage.setItem(CALL_PURPOSE_STORAGE_KEY, nextCallPurpose);
-    set({ skillPresetId, callPurpose: nextCallPurpose });
+    if (nextSelectedSkillId) {
+      localStorage.setItem(SELECTED_SKILL_STORAGE_KEY, nextSelectedSkillId);
+    } else {
+      localStorage.removeItem(SELECTED_SKILL_STORAGE_KEY);
+    }
+    set({ skillPresetId, callPurpose: nextCallPurpose, selectedSkillId: nextSelectedSkillId });
   },
   callPurpose: initialCallPurpose,
+  selectedSkillId: initialSelectedSkillId,
+  setSelectedSkillId: (selectedSkillId) => {
+    if (selectedSkillId) {
+      localStorage.setItem(SELECTED_SKILL_STORAGE_KEY, selectedSkillId);
+    } else {
+      localStorage.removeItem(SELECTED_SKILL_STORAGE_KEY);
+    }
+    set({ selectedSkillId });
+  },
   setCallPurpose: (callPurpose) => {
     const { skillPresetId } = get();
     localStorage.setItem(CALL_PURPOSE_STORAGE_KEY, callPurpose);
@@ -104,7 +123,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (preset && preset.prompt !== callPurpose) {
       localStorage.setItem(SKILL_PRESET_STORAGE_KEY, CUSTOM_SKILL_ID);
       localStorage.setItem(CUSTOM_CALL_PURPOSE_STORAGE_KEY, callPurpose);
-      set({ callPurpose, skillPresetId: CUSTOM_SKILL_ID });
+      localStorage.removeItem(SELECTED_SKILL_STORAGE_KEY);
+      set({ callPurpose, skillPresetId: CUSTOM_SKILL_ID, selectedSkillId: '' });
       return;
     }
 

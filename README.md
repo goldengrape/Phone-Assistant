@@ -83,3 +83,20 @@ src/
   App.tsx
   index.css
 ```
+## Documentation
+
+- `docs/architecture_and_modules.md`: current architecture and module responsibilities
+- `docs/audio_and_websocket_flow.md`: audio, transcript, and realtime transport flow
+- `docs/user_requirements.md`: current product-level requirements
+- `docs/ADD.md`: current design rationale from an axiomatic-design perspective
+- `docs/MDD.md`: current module design document
+- `docs/algorithm_description.md`: implementation-level processing description
+- `docs/skill_evaluation_report.md`: evaluation of whether this product should add AI skills
+- `docs/skill_module_implementation.md`: current document-driven skill module implementation
+- `docs/ui_design_principles.md`: UI design principles for future frontend changes
+
+## Known Constraints
+
+- Gemini official SDK adds noticeable frontend bundle weight compared with a raw protocol implementation
+- Qwen browser authentication is still constrained by the provider's WebSocket auth model
+- Actual voice quality and transcription accuracy depend on browser audio permissions, device routing, and model-side realtime behavior

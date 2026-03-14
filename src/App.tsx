@@ -10,8 +10,10 @@ import { GeminiLiveClient } from './api/GeminiLiveClient';
 import { AIClient, AIClientOptions } from './api/AIClient';
 import guidanceData from './guidance.json';
 import { resolveLocale, targetLanguageOptions, translations, uiLanguageOptions } from './i18n';
+import { buildSessionInstruction } from './lib/buildSessionInstruction';
 import { estimateTokens, getPcmLevel, mergeTranscriptText } from './lib/sessionUtils';
 import { cn } from './lib/utils';
+import { getSkillProfile } from './skills/registry';
 import { CUSTOM_SKILL_ID, getSkillPresetById, skillPresets, type SkillPresetId } from './skills';
 import { geminiVoiceOptions, type GeminiVoiceName } from './voices';
 
@@ -31,6 +33,7 @@ export default function App() {
     uiLanguage, setUiLanguage,
     geminiVoice, setGeminiVoice,
     skillPresetId, setSkillPresetId,
+    selectedSkillId,
     callPurpose, setCallPurpose,
     geminiApiKey, setGeminiApiKey,
     status, setStatus,
@@ -39,6 +42,13 @@ export default function App() {
 
   const locale = resolveLocale(uiLanguage, typeof navigator !== 'undefined' ? navigator.language : 'en');
   const text = translations[locale];
+  const sessionSkillId = selectedSkillId || (skillPresetId === CUSTOM_SKILL_ID ? '' : skillPresetId);
+  const selectedSkillProfile = getSkillProfile(sessionSkillId);
+  const sessionInstruction = buildSessionInstruction({
+    callPurpose,
+    skill: selectedSkillProfile,
+    targetLanguage: language,
+  });
   const sessionContextText = {
     en: {
       title: 'Session Context',
@@ -449,7 +459,8 @@ export default function App() {
       await captureRef.current.start();
       addMessage({ role: 'System', text: text.system.microphoneStarted });
 
-      const options = {
+      const options: AIClientOptions = {
+        sessionInstruction,
         callPurpose,
         targetLanguage: language,
         voiceName: geminiVoice,
@@ -605,7 +616,7 @@ export default function App() {
   const hasTranscriptContent = messages.length > 0 || liveTranscriptEntries.length > 0;
   const contextRelevantMessages = messages.filter((msg) => msg.role === 'AI' || msg.role === 'User' || msg.role === 'Supervisor');
   const transcriptPreviewTokenEstimate = liveTranscriptEntries.reduce((total, [, preview]) => total + estimateTokens(preview.text), 0);
-  const contextTokenEstimate = estimateTokens(callPurpose)
+  const contextTokenEstimate = estimateTokens(sessionInstruction)
     + contextRelevantMessages.reduce((total, msg) => total + estimateTokens(msg.text), 0)
     + transcriptPreviewTokenEstimate;
   const contextUsageRatio = Math.min(1, contextTokenEstimate / GEMINI_CONTEXT_TRIGGER_TOKENS);
@@ -839,6 +850,7 @@ export default function App() {
                 <div className="space-y-2">
                   <label className="text-xs font-medium text-[var(--app-text-soft)]">{guidanceCopy.skillPresetLabel}</label>
                   <select
+                    aria-label={locale === 'en' ? 'Active skill' : guidanceCopy.skillPresetLabel}
                     disabled={status !== 'disconnected'}
                     value={skillPresetId}
                     onChange={(e) => setSkillPresetId(e.target.value as SkillPresetId)}
@@ -873,7 +885,6 @@ export default function App() {
                   {guidanceCopy.skillPresetHint}
                 </div>
               </div>
-
               <textarea
                 disabled={status !== 'disconnected'}
                 value={callPurpose}

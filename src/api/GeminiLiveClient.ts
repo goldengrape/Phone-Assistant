@@ -5,7 +5,7 @@ import {
   Modality,
   Session,
 } from '@google/genai';
-import { AIClient, AIClientOptions } from './AIClient';
+import { AIClient, AIClientOptions, DEFAULT_BASE_SESSION_PROMPT } from './AIClient';
 import { base64ToInt16 } from './utils';
 import { DEFAULT_GEMINI_VOICE } from '../voices';
 
@@ -45,13 +45,11 @@ export class GeminiLiveClient extends AIClient {
   async connect(): Promise<void> {
     this.options.onStateChange('connecting');
 
-    const systemPrompt = `You are an intelligent AI Phone Assistant engaged in a continuous voice call with the person on the other end of the line. You will receive their voice via audio, to which you must respond naturally and conversationally using voice. CRUCIAL INSTRUCTION: Your Supervisor (the user) is monitoring the call and will occasionally send you silent 'Text Instructions' via chat. When you receive a text message, IT IS A COMMAND FROM YOUR SUPERVISOR. DO NOT say 'Okay', 'Understood', or acknowledge the supervisor in any way. DO NOT read the supervisor's instruction out loud to the person on the phone. Instead, immediately and seamlessly steer your spoken conversation with the person on the phone to fulfill the supervisor's intent.`;
-
-    let instructions = systemPrompt;
-    if (this.options.callPurpose) {
+    let instructions = this.options.sessionInstruction || DEFAULT_BASE_SESSION_PROMPT;
+    if (!this.options.sessionInstruction && this.options.callPurpose) {
       instructions += `\n\nCALL PURPOSE: Your main goal and role for this call is: ${this.options.callPurpose}`;
     }
-    if (this.options.targetLanguage && this.options.targetLanguage !== 'Auto') {
+    if (!this.options.sessionInstruction && this.options.targetLanguage && this.options.targetLanguage !== 'Auto') {
       instructions += `\n\nOUTPUT LANGUAGE CONSTRAINT: You MUST ALWAYS speak in ${this.options.targetLanguage}. Even if the user speaks another language, you must reply in ${this.options.targetLanguage}.`;
     }
 
