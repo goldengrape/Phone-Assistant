@@ -1,0 +1,152 @@
+{
+  "en": {
+    "appVersionLabel": "v0.1.0 preview",
+    "quickHelpTitle": "Help",
+    "quickHelpIntro": "This build is designed for Render as a static frontend. The server only hosts static assets.",
+    "helpSteps": [
+      "Open Settings and paste your own Gemini API key.",
+      "Choose a sample skill below, or switch to the blank Custom option and write your own.",
+      "Start the call, then use the whisper input at the bottom to steer the AI silently."
+    ],
+    "disclaimers": [
+      "BYOK: the Gemini API key is provided by the user and stored only in this browser localStorage by default.",
+      "Usage charges, quotas, and account policy enforcement stay under the user account that owns the Gemini key.",
+      "This is an early preview. Review the prompt and model behavior before using it for real calls."
+    ],
+    "keyLinkLabel": "Get a Gemini API key",
+    "keyHelper": "Official Google AI Studio link",
+    "skillPresetLabel": "Skill Example",
+    "skillPresetHint": "Choose a preset as a starting point. As soon as you edit it, the app switches to Custom and saves that text locally in your browser.",
+    "customOptionLabel": "Custom (blank)",
+    "customHint": "Custom starts blank so you can write your own skill from scratch.",
+    "clearCustomLabel": "Clear Custom",
+    "helpCardBody": "This version has no server-side account system and does not host Gemini keys for users.",
+    "disclaimerCardTitle": "Safety and Responsibility",
+    "credentialHelp": "You enter the key yourself, and it stays in local browser storage on this device."
+  },
+  "zh": {
+    "appVersionLabel": "v0.1.0 preview",
+    "quickHelpTitle": "使用帮助",
+    "quickHelpIntro": "这个版本适合部署到 Render，服务器只负责托管静态页面。",
+    "helpSteps": [
+      "先打开 Settings，填入你自己的 Gemini API key。",
+      "从下方的 skill 示例中选择一个模板，或者切换到 Custom 空白版本自行编写。",
+      "开始通话后，可以继续通过底部输入框给 AI 发送静默指令。"
+    ],
+    "disclaimers": [
+      "BYOK：API key 由用户自行提供，默认只保存在当前浏览器的 localStorage 中。",
+      "调用费用、速率限制和账号策略都归属于持有该 Gemini key 的用户账号。",
+      "这是一个早期预览版本，请在真实使用前先自行验证提示词和模型行为。"
+    ],
+    "keyLinkLabel": "申请 Gemini API key",
+    "keyHelper": "Google AI Studio 官方入口",
+    "skillPresetLabel": "Skill 示例",
+    "skillPresetHint": "你可以先选择一个预设作为示例。只要开始修改内容，应用就会自动切换到 Custom，并把文本保存在当前浏览器中。",
+    "customOptionLabel": "Custom（空白）",
+    "customHint": "Custom 默认是空白版本，适合从头编写自己的 skill。",
+    "clearCustomLabel": "清空 Custom",
+    "helpCardBody": "这个版本没有服务器端账号系统，也不会替用户托管 Gemini key。",
+    "disclaimerCardTitle": "安全与责任边界",
+    "credentialHelp": "密钥由用户自己输入，只保存在当前设备的本地浏览器存储中。"
+  },
+  "ja": {
+    "appVersionLabel": "v0.1.0 preview",
+    "quickHelpTitle": "使い方",
+    "quickHelpIntro": "このバージョンは Render 向けの静的フロントエンドとして設計されています。サーバーは静的アセットの配信だけを行います。",
+    "helpSteps": [
+      "Settings を開き、自分の Gemini API key を入力してください。",
+      "下の skill サンプルから選ぶか、空の Custom に切り替えて自分で書いてください。",
+      "通話を開始したら、下部の入力欄から AI に無言の指示を送れます。"
+    ],
+    "disclaimers": [
+      "BYOK: Gemini API key はユーザー自身が用意し、既定ではこのブラウザの localStorage にのみ保存されます。",
+      "利用料金、利用上限、アカウントのポリシー適用は、その Gemini key を所有するユーザーのアカウント側に帰属します。",
+      "これは初期プレビュー版です。実際の通話に使う前に、プロンプトとモデル挙動を確認してください。"
+    ],
+    "keyLinkLabel": "Gemini API key を取得",
+    "keyHelper": "Google AI Studio 公式リンク",
+    "skillPresetLabel": "Skill サンプル",
+    "skillPresetHint": "まずはプリセットを土台にできます。内容を編集し始めると、自動で Custom に切り替わり、そのテキストはブラウザに保存されます。",
+    "customOptionLabel": "Custom (blank)",
+    "customHint": "Custom は空の状態から始まるので、自分用の skill を一から書けます。",
+    "clearCustomLabel": "Custom をクリア",
+    "helpCardBody": "このバージョンにはサーバー側のアカウント機能はなく、ユーザーの Gemini key を保管しません。",
+    "disclaimerCardTitle": "安全性と責任範囲",
+    "credentialHelp": "キーは自分で入力し、この端末のローカルブラウザ保存領域にのみ保持されます。"
+  },
+  "ko": {
+    "appVersionLabel": "v0.1.0 preview",
+    "quickHelpTitle": "도움말",
+    "quickHelpIntro": "이 버전은 Render 배포용 정적 프론트엔드로 설계되었습니다. 서버는 정적 파일만 제공합니다.",
+    "helpSteps": [
+      "Settings 를 열고 자신의 Gemini API key 를 입력하세요.",
+      "아래 skill 예시 중 하나를 고르거나, 빈 Custom 으로 전환해 직접 작성하세요.",
+      "통화를 시작한 뒤에는 하단 입력창으로 AI 에게 조용한 지시를 보낼 수 있습니다."
+    ],
+    "disclaimers": [
+      "BYOK: Gemini API key 는 사용자가 직접 제공하며, 기본적으로 이 브라우저의 localStorage 에만 저장됩니다.",
+      "사용 요금, 할당량, 계정 정책 적용은 해당 Gemini key 를 소유한 사용자 계정에 귀속됩니다.",
+      "이 버전은 초기 프리뷰입니다. 실제 통화에 사용하기 전에 프롬프트와 모델 동작을 먼저 확인하세요."
+    ],
+    "keyLinkLabel": "Gemini API key 받기",
+    "keyHelper": "Google AI Studio 공식 링크",
+    "skillPresetLabel": "Skill 예시",
+    "skillPresetHint": "프리셋을 시작점으로 사용할 수 있습니다. 내용을 수정하기 시작하면 자동으로 Custom 으로 전환되고, 텍스트는 브라우저에 저장됩니다.",
+    "customOptionLabel": "Custom (blank)",
+    "customHint": "Custom 은 빈 상태로 시작하므로 나만의 skill 을 처음부터 작성할 수 있습니다.",
+    "clearCustomLabel": "Custom 비우기",
+    "helpCardBody": "이 버전에는 서버 계정 시스템이 없으며, 사용자 Gemini key 를 보관하지 않습니다.",
+    "disclaimerCardTitle": "안전 및 책임 범위",
+    "credentialHelp": "키는 사용자가 직접 입력하며, 이 기기의 로컬 브라우저 저장소에만 남습니다."
+  },
+  "fr": {
+    "appVersionLabel": "v0.1.0 preview",
+    "quickHelpTitle": "Aide",
+    "quickHelpIntro": "Cette version est concue pour un deploiement Render en frontend statique. Le serveur ne fait qu'heberger les fichiers statiques.",
+    "helpSteps": [
+      "Ouvrez Settings et collez votre propre Gemini API key.",
+      "Choisissez un exemple de skill ci-dessous, ou passez sur le Custom vide pour ecrire le votre.",
+      "Une fois l'appel demarre, utilisez le champ du bas pour envoyer des instructions silencieuses a l'IA."
+    ],
+    "disclaimers": [
+      "BYOK : la Gemini API key est fournie par l'utilisateur et n'est stockee, par defaut, que dans le localStorage de ce navigateur.",
+      "Les frais d'utilisation, quotas et politiques de compte restent rattaches au compte utilisateur qui possede cette Gemini key.",
+      "Il s'agit d'une preversion. Verifiez le prompt et le comportement du modele avant de l'utiliser pour de vrais appels."
+    ],
+    "keyLinkLabel": "Obtenir une Gemini API key",
+    "keyHelper": "Lien officiel Google AI Studio",
+    "skillPresetLabel": "Exemple de skill",
+    "skillPresetHint": "Vous pouvez partir d'un preset. Des que vous modifiez le texte, l'application bascule automatiquement sur Custom et enregistre ce contenu dans votre navigateur.",
+    "customOptionLabel": "Custom (blank)",
+    "customHint": "Custom demarre vide pour vous permettre d'ecrire votre propre skill depuis zero.",
+    "clearCustomLabel": "Vider Custom",
+    "helpCardBody": "Cette version n'a pas de systeme de compte cote serveur et n'heberge pas les Gemini keys des utilisateurs.",
+    "disclaimerCardTitle": "Securite et responsabilite",
+    "credentialHelp": "Vous saisissez la cle vous-meme, et elle reste dans le stockage local du navigateur sur cet appareil."
+  },
+  "es": {
+    "appVersionLabel": "v0.1.0 preview",
+    "quickHelpTitle": "Ayuda",
+    "quickHelpIntro": "Esta version esta pensada para desplegarse en Render como frontend estatico. El servidor solo publica archivos estaticos.",
+    "helpSteps": [
+      "Abre Settings y pega tu propia Gemini API key.",
+      "Elige un ejemplo de skill de abajo o cambia al Custom vacio para escribir el tuyo.",
+      "Cuando empiece la llamada, usa el cuadro inferior para enviar instrucciones silenciosas a la IA."
+    ],
+    "disclaimers": [
+      "BYOK: la Gemini API key la aporta el usuario y, por defecto, solo se guarda en el localStorage de este navegador.",
+      "Los cargos de uso, cuotas y politicas de cuenta permanecen bajo la cuenta del usuario que posee esa Gemini key.",
+      "Esta es una vista previa temprana. Revisa el prompt y el comportamiento del modelo antes de usarlo en llamadas reales."
+    ],
+    "keyLinkLabel": "Obtener una Gemini API key",
+    "keyHelper": "Enlace oficial de Google AI Studio",
+    "skillPresetLabel": "Ejemplo de skill",
+    "skillPresetHint": "Puedes usar un preset como punto de partida. En cuanto lo edites, la app cambiara automaticamente a Custom y guardara ese texto en tu navegador.",
+    "customOptionLabel": "Custom (blank)",
+    "customHint": "Custom empieza en blanco para que puedas escribir tu propio skill desde cero.",
+    "clearCustomLabel": "Limpiar Custom",
+    "helpCardBody": "Esta version no tiene sistema de cuentas en el servidor y no almacena Gemini keys de usuarios.",
+    "disclaimerCardTitle": "Seguridad y responsabilidad",
+    "credentialHelp": "Tu mismo introduces la clave y se queda solo en el almacenamiento local del navegador de este dispositivo."
+  }
+}

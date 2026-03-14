@@ -8,6 +8,7 @@ import { AudioCapture } from './audio/AudioCapture';
 import { AudioPlayback } from './audio/AudioPlayback';
 import { GeminiLiveClient } from './api/GeminiLiveClient';
 import { AIClient, AIClientOptions } from './api/AIClient';
+import guidanceData from './guidance.json';
 import { resolveLocale, targetLanguageOptions, translations, uiLanguageOptions } from './i18n';
 import { estimateTokens, getPcmLevel, mergeTranscriptText } from './lib/sessionUtils';
 import { cn } from './lib/utils';
@@ -193,7 +194,9 @@ export default function App() {
     },
   }[locale];
   const providerBadge = 'Gemini API only';
-  const guidanceCopy = false
+  const guidanceCopy = guidanceData[locale];
+  /*
+  const legacyGuidanceCopy = false
     ? {
         appVersionLabel: 'v0.1.0 preview',
         quickHelpTitle: 'ä½¿ç”¨å¸®åŠ©',
@@ -244,6 +247,7 @@ export default function App() {
         disclaimerCardTitle: 'Safety and Responsibility',
         credentialHelp: 'You enter the key yourself, and it stays in local browser storage on this device.',
       };
+  */
   const modelLabel = text.misc.modelGemini;
   const surfaceClass = 'border border-[color:var(--app-border)] bg-[var(--app-surface)] shadow-[var(--app-shadow)] backdrop-blur-xl';
   const surfaceStrongClass = 'border border-[color:var(--app-border)] bg-[var(--app-surface-strong)] shadow-[var(--app-shadow)] backdrop-blur-xl';
