@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/store/useAppStore.ts</title>
+    <title>Code coverage report for src/skills/parseSkillDocument.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../prettify.css" />
     <link rel="stylesheet" href="../../base.css" />
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/store</a> useAppStore.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/skills</a> parseSkillDocument.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">59.09% </span>
+                <span class="strong">83.87% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>13/22</span>
+                <span class='fraction'>26/31</span>
+            </div>
+        
+            
+            <div class='fl pad1y space-right2'>
+                <span class="strong">64.28% </span>
+                <span class="quiet">Branches</span>
+                <span class='fraction'>9/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
-                <span class="quiet">Branches</span>
-                <span class='fraction'>14/14</span>
-            </div>
-        
-            
-            <div class='fl pad1y space-right2'>
-                <span class="strong">61.53% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>8/13</span>
+                <span class='fraction'>9/9</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">55% </span>
+                <span class="strong">83.87% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>11/20</span>
+                <span class='fraction'>26/31</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line medium'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -146,13 +146,7 @@
 <a name='L81'></a><a href='#L81'>81</a>
 <a name='L82'></a><a href='#L82'>82</a>
 <a name='L83'></a><a href='#L83'>83</a>
-<a name='L84'></a><a href='#L84'>84</a>
-<a name='L85'></a><a href='#L85'>85</a>
-<a name='L86'></a><a href='#L86'>86</a>
-<a name='L87'></a><a href='#L87'>87</a>
-<a name='L88'></a><a href='#L88'>88</a>
-<a name='L89'></a><a href='#L89'>89</a>
-<a name='L90'></a><a href='#L90'>90</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L84'></a><a href='#L84'>84</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -160,176 +154,164 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">279x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-yes">217x</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">62x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-yes">217x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">31x</span>
+<span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">14x</span>
+<span class="cline-any cline-yes">31x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { create } from 'zustand';
-import type { UiLanguage } from '../i18n';
-import { DEFAULT_GEMINI_VOICE, type GeminiVoiceName } from '../voices';
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import type { SkillProfile } from './types';
 &nbsp;
-interface Message {
-  id: string;
-  role: 'AI' | 'User' | 'Supervisor' | 'System';
-  text: string;
-  timestamp: Date;
+type ParsedFrontmatter = {
+  name: string;
+  description: string;
+};
+&nbsp;
+function normalizeMarkdown(markdown: string): string {
+  return markdown.replace(/\r\n/g, '\n');
 }
 &nbsp;
-interface AppState {
-  model: 'Gemini' | 'Qwen';
-  setModel: (m: 'Gemini' | 'Qwen') =&gt; void;
-  language: string;
-  setLanguage: (l: string) =&gt; void;
-  uiLanguage: UiLanguage;
-  setUiLanguage: (language: UiLanguage) =&gt; void;
-  geminiVoice: GeminiVoiceName;
-  setGeminiVoice: (voice: GeminiVoiceName) =&gt; void;
-  selectedSkillId: string;
-  setSelectedSkillId: (skillId: string) =&gt; void;
-  callPurpose: string;
-  setCallPurpose: (cp: string) =&gt; void;
+function parseFrontmatter(markdown: string): ParsedFrontmatter {
+  const normalizedMarkdown = normalizeMarkdown(markdown);
+  const match = normalizedMarkdown.match(/^---\n([\s\S]*?)\n---/);
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!match) {
+<span class="cstat-no" title="statement not covered" >    throw new Error('Skill document is missing YAML frontmatter.');</span>
+  }
 &nbsp;
-  geminiApiKey: string;
-  setGeminiApiKey: (key: string) =&gt; void;
-  qwenApiKey: string;
-  setQwenApiKey: (key: string) =&gt; void;
+  const name = match[1].match(/^name:\s*(.+)$/m)?.[1]?.trim();
+  const description = match[1].match(/^description:\s*(.+)$/m)?.[1]?.trim();
 &nbsp;
-  status: 'disconnected' | 'connecting' | 'connected' | 'error';
-  setStatus: (status: 'disconnected' | 'connecting' | 'connected' | 'error') =&gt; void;
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!name || !description) {
+<span class="cstat-no" title="statement not covered" >    throw new Error('Skill document frontmatter must include name and description.');</span>
+  }
 &nbsp;
-  messages: Message[];
-  addMessage: (msg: Omit&lt;Message, 'id' | 'timestamp'&gt;) =&gt; void;
-  clearMessages: () =&gt; void;
+  return {
+    name: name.replace(/^"|"$/g, ''),
+    description: description.replace(/^"|"$/g, ''),
+  };
 }
 &nbsp;
-const DEFAULT_CALL_PURPOSE = 'You are an intelligent AI Phone Assistant...';
+function getTitle(markdown: string): string {
+  const match = normalizeMarkdown(markdown).match(/^# (.+)$/m);
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (!match) {
+<span class="cstat-no" title="statement not covered" >    throw new Error('Skill document is missing the top-level title.');</span>
+  }
 &nbsp;
-export const useAppStore = create&lt;AppState&gt;((set) =&gt; ({
-  model: 'Gemini',
-  setModel: <span class="fstat-no" title="function not covered" >(m</span>) =&gt; <span class="cstat-no" title="statement not covered" >set({ model: m }),</span>
-  language: localStorage.getItem('target_language') || 'Auto',
-  setLanguage: (language) =&gt; {
-    localStorage.setItem('target_language', language);
-    set({ language });
-  },
-  uiLanguage: (localStorage.getItem('ui_language') as UiLanguage | null) || 'auto',
-  setUiLanguage: <span class="fstat-no" title="function not covered" >(u</span>iLanguage) =&gt; {
-<span class="cstat-no" title="statement not covered" >    localStorage.setItem('ui_language', uiLanguage);</span>
-<span class="cstat-no" title="statement not covered" >    set({ uiLanguage });</span>
-  },
-  geminiVoice: (localStorage.getItem('gemini_voice') as GeminiVoiceName | null) || DEFAULT_GEMINI_VOICE,
-  setGeminiVoice: <span class="fstat-no" title="function not covered" >(g</span>eminiVoice) =&gt; {
-<span class="cstat-no" title="statement not covered" >    localStorage.setItem('gemini_voice', geminiVoice);</span>
-<span class="cstat-no" title="statement not covered" >    set({ geminiVoice });</span>
-  },
-  selectedSkillId: localStorage.getItem('selected_skill_id') || '',
-  setSelectedSkillId: (selectedSkillId) =&gt; {
-    localStorage.setItem('selected_skill_id', selectedSkillId);
-    set({ selectedSkillId });
-  },
-  callPurpose: localStorage.getItem('call_purpose') || DEFAULT_CALL_PURPOSE,
-  setCallPurpose: (callPurpose) =&gt; {
-    localStorage.setItem('call_purpose', callPurpose);
-    set({ callPurpose });
-  },
+  return match[1].trim();
+}
 &nbsp;
-  geminiApiKey: localStorage.getItem('gemini_api_key') || '',
-  setGeminiApiKey: <span class="fstat-no" title="function not covered" >(k</span>ey) =&gt; {
-<span class="cstat-no" title="statement not covered" >    localStorage.setItem('gemini_api_key', key);</span>
-<span class="cstat-no" title="statement not covered" >    set({ geminiApiKey: key });</span>
-  },
-  qwenApiKey: localStorage.getItem('qwen_api_key') || '',
-  setQwenApiKey: <span class="fstat-no" title="function not covered" >(k</span>ey) =&gt; {
-<span class="cstat-no" title="statement not covered" >    localStorage.setItem('qwen_api_key', key);</span>
-<span class="cstat-no" title="statement not covered" >    set({ qwenApiKey: key });</span>
-  },
+function getSection(markdown: string, heading: string): string {
+  const normalizedMarkdown = normalizeMarkdown(markdown);
+  const sectionMarker = `## ${heading}\n\n`;
+  const sectionStart = normalizedMarkdown.indexOf(sectionMarker);
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (sectionStart === -1) {
+<span class="cstat-no" title="statement not covered" >    throw new Error(`Skill document is missing the "${heading}" section.`);</span>
+  }
 &nbsp;
-  status: 'disconnected',
-  setStatus: (s) =&gt; set({ status: s }),
+  const sectionContentStart = sectionStart + sectionMarker.length;
+  const remaining = normalizedMarkdown.slice(sectionContentStart);
+  const nextSectionIndex = remaining.indexOf('\n## ');
 &nbsp;
-  messages: [],
-  addMessage: (msg) =&gt; set((state) =&gt; ({
-    messages: [...state.messages, { ...msg, id: Math.random().toString(36).substring(7), timestamp: new Date() }]
-  })),
-  clearMessages: () =&gt; set({ messages: [] })
-}));
+  return (nextSectionIndex === -1 ? remaining : remaining.slice(0, nextSectionIndex)).trim();
+}
+&nbsp;
+function getBulletSection(markdown: string, heading: string): string[] {
+  return getSection(markdown, heading)
+    .split('\n')
+    .map((line) =&gt; line.trim())
+    .filter((line) =&gt; line.startsWith('- '))
+    .map((line) =&gt; line.slice(2).trim())
+    .filter(Boolean);
+}
+&nbsp;
+export function parseSkillDocument(skillId: string, markdown: string): SkillProfile {
+  const frontmatter = parseFrontmatter(markdown);
+  <span class="missing-if-branch" title="if path not taken" >I</span>if (frontmatter.name !== skillId) {
+<span class="cstat-no" title="statement not covered" >    throw new Error(`Skill frontmatter name "${frontmatter.name}" must match the folder id "${skillId}".`);</span>
+  }
+&nbsp;
+  return {
+    id: skillId,
+    name: getTitle(markdown),
+    description: frontmatter.description,
+    objective: getSection(markdown, 'Objective'),
+    tone: getSection(markdown, 'Tone'),
+    forbiddenBehaviors: getBulletSection(markdown, 'Guardrails'),
+    strategies: getBulletSection(markdown, 'Strategies'),
+    openingStyle: getSection(markdown, 'Opening'),
+    closingStyle: getSection(markdown, 'Closing'),
+    recommendedCallPurposeHint: getSection(markdown, 'Recommended Call Purpose'),
+  };
+}
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->

@@ -3,7 +3,7 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for src/api/AIClient.ts</title>
+    <title>Code coverage report for src/skills/registry.ts</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" href="../../prettify.css" />
     <link rel="stylesheet" href="../../base.css" />
@@ -19,7 +19,7 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/api</a> AIClient.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">src/skills</a> registry.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
@@ -39,14 +39,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/1</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>3/3</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
@@ -82,19 +82,7 @@
 <a name='L17'></a><a href='#L17'>17</a>
 <a name='L18'></a><a href='#L18'>18</a>
 <a name='L19'></a><a href='#L19'>19</a>
-<a name='L20'></a><a href='#L20'>20</a>
-<a name='L21'></a><a href='#L21'>21</a>
-<a name='L22'></a><a href='#L22'>22</a>
-<a name='L23'></a><a href='#L23'>23</a>
-<a name='L24'></a><a href='#L24'>24</a>
-<a name='L25'></a><a href='#L25'>25</a>
-<a name='L26'></a><a href='#L26'>26</a>
-<a name='L27'></a><a href='#L27'>27</a>
-<a name='L28'></a><a href='#L28'>28</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L20'></a><a href='#L20'>20</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -105,44 +93,32 @@
 <span class="cline-any cline-yes">6x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">79x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export interface AIClientOptions {
-  onAudioData: (pcm16: Int16Array, sampleRate?: number) =&gt; void;
-  onTranscript: (role: string, text: string) =&gt; void;
-  onTranscriptPreview?: (role: 'AI' | 'User', text: string, isFinal: boolean) =&gt; void;
-  onStateChange: (state: 'disconnected' | 'connecting' | 'connected' | 'error') =&gt; void;
-  sessionInstruction?: string;
-  callPurpose?: string;
-  targetLanguage?: string;
-  voiceName?: string;
-  apiKey?: string;
-}
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import negotiationSkill from '../../skills/negotiation/SKILL.md?raw';
+import salesFollowUpSkill from '../../skills/sales-follow-up/SKILL.md?raw';
+import deEscalationSkill from '../../skills/de-escalation/SKILL.md?raw';
+import informationCollectionSkill from '../../skills/information-collection/SKILL.md?raw';
+import schedulingSkill from '../../skills/scheduling/SKILL.md?raw';
+import { parseSkillDocument } from './parseSkillDocument';
+import type { SkillProfile } from './types';
 &nbsp;
-export const DEFAULT_BASE_SESSION_PROMPT = `You are an intelligent AI Phone Assistant engaged in a continuous voice call with the person on the other end of the line. You will receive their voice via audio, to which you must respond naturally and conversationally using voice. CRUCIAL INSTRUCTION: Your Supervisor (the user) is monitoring the call and will occasionally send you silent 'Text Instructions' via chat. When you receive a text message, IT IS A COMMAND FROM YOUR SUPERVISOR. DO NOT say 'Okay', 'Understood', or acknowledge the supervisor in any way. DO NOT read the supervisor's instruction out loud to the person on the phone. Instead, immediately and seamlessly steer your spoken conversation with the person on the phone to fulfill the supervisor's intent.`;
+export const skillProfiles = [
+  parseSkillDocument('negotiation', negotiationSkill),
+  parseSkillDocument('sales-follow-up', salesFollowUpSkill),
+  parseSkillDocument('de-escalation', deEscalationSkill),
+  parseSkillDocument('information-collection', informationCollectionSkill),
+  parseSkillDocument('scheduling', schedulingSkill),
+];
 &nbsp;
-export abstract class AIClient {
-  protected ws: WebSocket | null = null;
-  protected options: AIClientOptions;
-&nbsp;
-  constructor(options: AIClientOptions) {
-    this.options = options;
-  }
-&nbsp;
-  abstract connect(): Promise&lt;void&gt;;
-  abstract disconnect(): void;
-  abstract sendAudio(pcm16: Int16Array): void;
-  abstract sendWhisper(text: string): void;
+export function getSkillProfile(skillId: string): SkillProfile | undefined {
+  return skillProfiles.find((skill) =&gt; skill.id === skillId);
 }
 &nbsp;</pre></td></tr></table></pre>
 

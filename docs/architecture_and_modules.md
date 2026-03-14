@@ -9,6 +9,7 @@ The project no longer uses the earlier Kivy desktop architecture or CLI audio br
 - a React single-page app
 - local browser audio capture and playback
 - a Zustand app store
+- a document-driven skill layer
 - model-specific realtime client adapters
 
 The app is backendless at the application layer. Audio capture, transcript preview, prompt control, and playback all happen in the frontend runtime.
@@ -20,6 +21,7 @@ graph TD
     A["React UI (App.tsx)"] <--> B["Zustand Store (useAppStore)"]
     A <--> C["AI Client Abstraction (AIClient)"]
     A <--> D["i18n Layer (i18n.ts)"]
+    A <--> K["Skill Registry + Instruction Builder"]
 
     E["AudioCapture"] --> C
     C --> F["GeminiLiveClient"]
@@ -27,6 +29,7 @@ graph TD
     F --> H["Gemini Live API via @google/genai"]
     G --> I["Qwen Realtime WebSocket"]
     C --> J["AudioPlayback"]
+    K --> C
 ```
 
 ## 3. Main Modules
@@ -64,6 +67,7 @@ Responsibilities:
 - target language
 - UI language
 - Gemini voice preset
+- selected skill id
 - editable call purpose / system instruction
 - persisted API keys
 - connection status
@@ -72,9 +76,26 @@ Responsibilities:
 Persistence behavior:
 
 - API keys are stored in browser local storage
+- `selectedSkillId` is stored in browser local storage
 - `callPurpose` is stored in browser local storage
 - `uiLanguage` is stored in browser local storage
 - `geminiVoice` is stored in browser local storage
+
+### 3.2.1 Skill Layer
+
+Primary files:
+
+- `skills/<skill-id>/SKILL.md`
+- `src/skills/parseSkillDocument.ts`
+- `src/skills/registry.ts`
+- `src/lib/buildSessionInstruction.ts`
+
+Responsibilities:
+
+- treat `skills/<skill-id>/SKILL.md` as the source of truth for built-in skills
+- parse markdown skill documents into runtime skill profiles
+- assemble the final `sessionInstruction` from base policy, selected skill, call purpose, and language constraint
+- keep skill logic out of audio modules and transport protocol code
 
 ### 3.3 Internationalization
 

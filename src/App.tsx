@@ -10,8 +10,10 @@ import { GeminiLiveClient } from './api/GeminiLiveClient';
 import { QwenLiveClient } from './api/QwenLiveClient';
 import { AIClient, AIClientOptions } from './api/AIClient';
 import { resolveLocale, targetLanguageOptions, translations, uiLanguageOptions } from './i18n';
+import { buildSessionInstruction } from './lib/buildSessionInstruction';
 import { estimateTokens, getPcmLevel, mergeTranscriptText } from './lib/sessionUtils';
 import { cn } from './lib/utils';
+import { getSkillProfile, skillProfiles } from './skills/registry';
 import { geminiVoiceOptions, type GeminiVoiceName } from './voices';
 
 const OUTPUT_ACTIVITY_RESET_MS = 250;
@@ -30,6 +32,7 @@ export default function App() {
     language, setLanguage,
     uiLanguage, setUiLanguage,
     geminiVoice, setGeminiVoice,
+    selectedSkillId, setSelectedSkillId,
     callPurpose, setCallPurpose,
     geminiApiKey, setGeminiApiKey,
     qwenApiKey, setQwenApiKey,
@@ -39,6 +42,21 @@ export default function App() {
 
   const locale = resolveLocale(uiLanguage, typeof navigator !== 'undefined' ? navigator.language : 'en');
   const text = translations[locale];
+  const selectedSkill = getSkillProfile(selectedSkillId);
+  const skillText = {
+    title: 'Skill Profile',
+    selectLabel: 'Active skill',
+    none: 'No skill preset',
+    helper: 'Skills are lightweight behavior presets. Your call purpose still defines the specific task.',
+    objective: 'Objective',
+    tone: 'Tone',
+    previewHint: 'The selected skill will be layered into the final session instruction.',
+  };
+  const sessionInstruction = buildSessionInstruction({
+    skill: selectedSkill,
+    callPurpose,
+    targetLanguage: language,
+  });
   const sessionContextText = {
     en: {
       title: 'Session Context',
@@ -391,7 +409,8 @@ export default function App() {
       await captureRef.current.start();
       addMessage({ role: 'System', text: text.system.microphoneStarted });
 
-      const options = {
+      const options: AIClientOptions = {
+        sessionInstruction,
         callPurpose,
         targetLanguage: language,
         voiceName: model === 'Gemini' ? geminiVoice : undefined,
@@ -553,7 +572,7 @@ export default function App() {
   const hasTranscriptContent = messages.length > 0 || liveTranscriptEntries.length > 0;
   const contextRelevantMessages = messages.filter((msg) => msg.role === 'AI' || msg.role === 'User' || msg.role === 'Supervisor');
   const transcriptPreviewTokenEstimate = liveTranscriptEntries.reduce((total, [, preview]) => total + estimateTokens(preview.text), 0);
-  const contextTokenEstimate = estimateTokens(callPurpose)
+  const contextTokenEstimate = estimateTokens(sessionInstruction)
     + contextRelevantMessages.reduce((total, msg) => total + estimateTokens(msg.text), 0)
     + transcriptPreviewTokenEstimate;
   const contextUsageRatio = Math.min(1, contextTokenEstimate / GEMINI_CONTEXT_TRIGGER_TOKENS);
@@ -749,6 +768,53 @@ export default function App() {
           
           {showPrompt && (
             <div className="animate-in slide-in-from-top-1 fade-in border-t border-[color:var(--app-border)] p-4 duration-200">
+              <div className="mb-4 rounded-xl border border-[color:var(--app-border)] bg-[color:var(--app-surface-muted)]/80 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label htmlFor="skill-profile" className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--app-text-soft)]">
+                    {skillText.selectLabel}
+                  </label>
+                  <span className="text-[10px] text-[var(--app-text-soft)]">{skillText.previewHint}</span>
+                </div>
+                <select
+                  id="skill-profile"
+                  aria-label={skillText.selectLabel}
+                  disabled={status !== 'disconnected'}
+                  value={selectedSkillId}
+                  onChange={(e) => setSelectedSkillId(e.target.value)}
+                  className={cn("w-full rounded-xl px-3 py-2.5 text-sm", fieldClass)}
+                >
+                  <option value="">{skillText.none}</option>
+                  {skillProfiles.map((skill) => (
+                    <option key={skill.id} value={skill.id}>
+                      {skill.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-[var(--app-text-soft)]">{skillText.helper}</p>
+                {selectedSkill && (
+                  <div className="mt-3 rounded-xl border border-[color:var(--app-border)] bg-[var(--app-input)] p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-[var(--app-text)]">{selectedSkill.name}</div>
+                        <div className="mt-1 text-xs text-[var(--app-text-soft)]">{selectedSkill.description}</div>
+                      </div>
+                      <span className="rounded-full border border-blue-500/25 bg-blue-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-400">
+                        {skillText.title}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div className="rounded-lg border border-[color:var(--app-border)] bg-[color:var(--app-surface-muted)]/80 p-3">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--app-text-soft)]">{skillText.objective}</div>
+                        <div className="mt-1 text-sm text-[var(--app-text)]">{selectedSkill.objective}</div>
+                      </div>
+                      <div className="rounded-lg border border-[color:var(--app-border)] bg-[color:var(--app-surface-muted)]/80 p-3">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--app-text-soft)]">{skillText.tone}</div>
+                        <div className="mt-1 text-sm text-[var(--app-text)]">{selectedSkill.tone}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               <textarea
                 disabled={status !== 'disconnected'}
                 value={callPurpose}

@@ -18,6 +18,8 @@ interface AppState {
   setUiLanguage: (language: UiLanguage) => void;
   geminiVoice: GeminiVoiceName;
   setGeminiVoice: (voice: GeminiVoiceName) => void;
+  selectedSkillId: string;
+  setSelectedSkillId: (skillId: string) => void;
   callPurpose: string;
   setCallPurpose: (cp: string) => void;
 
@@ -53,6 +55,11 @@ export const useAppStore = create<AppState>((set) => ({
   setGeminiVoice: (geminiVoice) => {
     localStorage.setItem('gemini_voice', geminiVoice);
     set({ geminiVoice });
+  },
+  selectedSkillId: localStorage.getItem('selected_skill_id') || '',
+  setSelectedSkillId: (selectedSkillId) => {
+    localStorage.setItem('selected_skill_id', selectedSkillId);
+    set({ selectedSkillId });
   },
   callPurpose: localStorage.getItem('call_purpose') || DEFAULT_CALL_PURPOSE,
   setCallPurpose: (callPurpose) => {

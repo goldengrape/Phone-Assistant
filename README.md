@@ -149,6 +149,7 @@ src/
 - `docs/MDD.md`: current module design document
 - `docs/algorithm_description.md`: implementation-level processing description
 - `docs/skill_evaluation_report.md`: evaluation of whether this product should add AI skills
+- `docs/skill_module_implementation.md`: current document-driven skill module implementation
 - `docs/ui_design_principles.md`: UI design principles for future frontend changes
 
 ## Known Constraints

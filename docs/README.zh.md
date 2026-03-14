@@ -149,6 +149,7 @@ src/
 - `docs/MDD.md`：模块设计文档
 - `docs/algorithm_description.md`：实现层处理流程说明
 - `docs/skill_evaluation_report.md`：是否应引入 AI skill 的评估
+- `docs/skill_module_implementation.zh.md`：当前文档驱动 skill 模块的实现说明
 - `docs/ui_design_principles.md`：后续前端迭代的 UI 设计原则
 
 ## 已知约束
@@ -156,4 +157,3 @@ src/
 - 相比原始协议实现，Gemini 官方 SDK 会显著增加前端 bundle 体积
 - 受限于提供方的 WebSocket 鉴权模型，Qwen 的浏览器侧鉴权仍有约束
 - 实际语音质量与转写准确性会受到浏览器权限、音频设备路由、以及模型实时行为影响
-
